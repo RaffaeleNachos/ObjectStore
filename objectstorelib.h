@@ -1,5 +1,5 @@
 /**
- * @file objectstore.h
+ * @file objectstorelib.h
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
  * @brief 
  * @version 0.1
@@ -7,6 +7,8 @@
  * @copyright Copyright (c) 2019
  * 
  */
+
+#include <stdlib.h>
 
 /**
  * @brief 
