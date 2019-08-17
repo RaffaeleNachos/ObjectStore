@@ -47,18 +47,62 @@ int os_connect(char* name){
     dprintf(fd_skt, "%s", name);
     read(fd_skt,response,sizeof(response));
     printf("%s\n", response);
+    free(response);
     return 0;
 }
 
 int os_store(char* name, void* block, size_t len){
+    write(fd_skt, "STORE", 6);
+    sleep(1);
+    dprintf(fd_skt, "%s", name);
+    sleep(1);
+    dprintf(fd_skt, "%zu", len);
+    sleep(1);
+    char* buff = malloc(len*sizeof(char));
+    fread(buff,len,1,block);
+    dprintf(fd_skt, "%s", buff);
+    response = malloc(128*sizeof(char));
+    read(fd_skt,response,sizeof(response));
+    printf("%s\n", response);
+    free(response);
     return 0;
 }
 
 void *os_retrieve(char* name){
+    write(fd_skt, "RETRIEVE", 9);
+    sleep(1);
+    dprintf(fd_skt, "%s", name);
+    sleep(1);
+    FILE* newfiledesc;
+    char* len = malloc(128*sizeof(char));
+    read(fd_skt,len,sizeof(len));
+    int dimbyte = strtol(len, NULL, 10);
+    printf("dimbyte ricevuta %d\n", dimbyte);
+    free(len);
+    if ((newfiledesc=fopen(name, "wb")) == NULL){
+        perror("errore creazione e scrittura retrieve client");
+    }
+    char* buffer = malloc(dimbyte*sizeof(char));
+    read(fd_skt,buffer,dimbyte);
+    printf("ho letto %s\n", buffer);
+    fwrite(buffer,dimbyte,1,newfiledesc);
+    fclose(newfiledesc);
+    response = malloc(128*sizeof(char));
+    read(fd_skt,response,sizeof(response));
+    printf("%s\n", response);
+    free(response);
     return 0;
 }
 
 int os_delete(char* name){
+    write(fd_skt, "DELETE", 7);
+    sleep(1);
+    dprintf(fd_skt, "%s", name);
+    sleep(1);
+    response = malloc(128*sizeof(char));
+    read(fd_skt,response,sizeof(response));
+    printf("%s\n", response);
+    free(response);
     return 0;
 }
 

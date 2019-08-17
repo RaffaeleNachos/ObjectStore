@@ -1,3 +1,13 @@
+/**
+ * @file objectstoreserver.c
+ * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
+ * @brief 
+ * @version 0.1
+ * 
+ * @copyright Copyright (c) 2019
+ * 
+ */
+
 #include <sys/types.h> 
 #include <sys/socket.h> 
 #include <sys/un.h> /* necessario per ind su macchiona locale AF_UNIX */
@@ -11,6 +21,7 @@
 #include <pthread.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <fcntl.h>
 
 #define UNIX_PATH_MAX 104 /* lunghezza massima consentita per il path */
 #define SOCKNAME "./objstore.sock"
@@ -40,6 +51,7 @@ unsigned long hash(char *str){
 
 static void* myworker (void* arg){
     int fd = (int)arg;
+    int index = -1;
     DIR* cdir = NULL;
     char* crequest = malloc(MAXMSG*sizeof(char));
     read(fd,crequest,MAXMSG);
@@ -48,7 +60,7 @@ static void* myworker (void* arg){
             char* tmpname = malloc(128*sizeof(char));
             read(fd,tmpname,sizeof(tmpname));
             printf("registro client %s\n", tmpname);
-            int index = hash(tmpname);
+            index = hash(tmpname);
             if((client_arr[index]!=NULL)){ /* se è già registrato */
                 errno=0;
                 if ((cdir=opendir(client_arr[index]->clientdir))==NULL) {
@@ -80,18 +92,77 @@ static void* myworker (void* arg){
             client_arr[index]->isonline=1;
         }
         else if (strcmp(crequest,"STORE")==0){
-            /*register */
+            FILE* tmpfiledesc;
+            char* filename = malloc(128*sizeof(char));
+            char* pathtofile = malloc(128*sizeof(char));
+            char* len = malloc(128*sizeof(char));
+            read(fd,filename,sizeof(filename));
+            strcat(pathtofile, client_arr[index]->clientdir);
+            strcat(pathtofile, "/");
+            strcat(pathtofile, filename);
+            printf("nome del file %s\n", filename);
+            printf("path %s\n", pathtofile);
+            free(filename);
+            if ((tmpfiledesc=fopen(pathtofile, "wb")) == NULL){
+                perror("errore creazione e scrittura file store");
+                continue;
+            }
+            read(fd,len,sizeof(len));
+            int dimbyte = strtol(len, NULL, 10);
+            free(len);
+            char* buffer = malloc(dimbyte*sizeof(char));
+            read(fd,buffer,dimbyte);
+            fwrite(buffer,dimbyte,1,tmpfiledesc);
+            fclose(tmpfiledesc);
+            write(fd,"OK",3);
         }
-        else if (strcmp(crequest,"RETREIVE")==0){
-            /*register */
+        else if (strcmp(crequest,"RETRIEVE")==0){
+            printf("retrieve richiesta\n");
+            FILE* readfiledesc;
+            char* filename = malloc(128*sizeof(char));
+            char* pathtofile = malloc(128*sizeof(char));
+            read(fd,filename,sizeof(filename));
+            strcat(pathtofile, client_arr[index]->clientdir);
+            strcat(pathtofile, "/");
+            strcat(pathtofile, filename);
+            printf("nome del file %s\n", filename);
+            printf("path %s\n", pathtofile);
+            free(filename);
+            if ((readfiledesc=fopen(pathtofile, "rb")) == NULL){
+                perror("errore creazione e scrittura file store");
+                continue;
+            }
+            int inputfd = fileno(readfiledesc);
+            struct stat fst;
+            fstat(inputfd, &fst);
+            int dimbyte = fst.st_size;
+            dprintf(fd,"%d",dimbyte);
+            sleep(1);
+            printf("mando dim: %d\n", dimbyte);
+            char* buffer = malloc(128*sizeof(char));
+            fread(buffer,dimbyte,1,readfiledesc);
+            printf("dal server ho letto: %s\n", buffer);
+            write(fd, buffer, dimbyte);
+            write(fd, "OK", 3);
         }
         else if (strcmp(crequest,"DELETE")==0){
-            /*register */
+            char* filename = malloc(128*sizeof(char));
+            char* pathtofile = malloc(128*sizeof(char));
+            read(fd,filename,sizeof(filename));
+            strcat(pathtofile, client_arr[index]->clientdir);
+            strcat(pathtofile, "/");
+            strcat(pathtofile, filename);
+            if(remove(pathtofile)!=0){
+                perror("errore delete server");
+                write(fd,"KO",3);
+            }
+            else write(fd,"OK",3);
         }
         printf("ho terminato, immettere prossima op\n");
         read(fd,crequest,MAXMSG);
     }
     printf("Disconnetto client\n");
+    client_arr[index]->isonline=0;
     if((closedir(cdir))==-1){
         perror("Chiusura dir fallita");
     }
