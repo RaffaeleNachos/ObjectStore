@@ -26,9 +26,9 @@
 #define UNIX_PATH_MAX 104 /* lunghezza massima consentita per il path */
 #define SOCKNAME "./objstore.sock"
 #define MAXMSG 128
-#define MAXREGUSR 1024
+#define MAXREGUSR 1024 /*dimensione tabella hash*/
 
-typedef struct _client { //per vedere se il cliente è già registrato
+typedef struct _client { //per vedere se il cliente è già registrato basta controllare tramite hashing
     char* name;
     int isonline; //per report
     char* clientdir; //per opendir
@@ -41,130 +41,158 @@ void cleanup(){
     unlink(SOCKNAME);
 }
 
-unsigned long hash(char *str){
-    unsigned long hash = 5381;
+unsigned long hash(char *str){ /*funzione hash basata su stringhe*/
+    unsigned long hash = 5381; /*numero primo molto grande*/
     int c;
-    while ((c = *str++))
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-    return (hash%MAXREGUSR);
+    while ((c = *str++)) /*per ogni carattere viene associato il suo valore ascii*/
+        hash = ((hash << 5) + hash) + c; /* esegue uno shift ciclico a sinistra di 5 posizioni sul valore hash, sarebbe come fare hash * 32 + c */
+    return (hash%MAXREGUSR); /*ritorna valore in modulo per far si che index si trovi all'interno dell'hash*/
 }
 
-static void* myworker (void* arg){
+static void* myworker (void* arg){ /*thread detached worker che gestisce un singolo client*/
     int fd = (int)arg;
     int index = -1;
     DIR* cdir = NULL;
+    char* strreceived = malloc(MAXMSG*sizeof(char));
     char* crequest = malloc(MAXMSG*sizeof(char));
-    read(fd,crequest,MAXMSG);
+    char* last;
+    read(fd,strreceived,MAXMSG);
+    crequest=strtok_r(strreceived, " ", &last);
     while(strcmp(crequest,"LEAVE")!=0){
         if (strcmp(crequest,"REGISTER")==0){
-            char* tmpname = malloc(128*sizeof(char));
-            read(fd,tmpname,sizeof(tmpname));
-            printf("registro client %s\n", tmpname);
-            index = hash(tmpname);
+            crequest=strtok_r(NULL, " ", &last);
+            printf("registro client %s\n", crequest);
+            index = hash(crequest); /*calcolo indice nella tabella hash*/
             if((client_arr[index]!=NULL)){ /* se è già registrato */
+                client_arr[index]->isonline=1;
                 errno=0;
                 if ((cdir=opendir(client_arr[index]->clientdir))==NULL) {
 	                perror("Apertura dir fallita");
-                    write(fd,"login failed", 13);
+                    write(fd,"KO", 3);
+                    continue;
                 }
-                else write(fd, "logged", 7);
+                else write(fd, "OK", 3);
             }
             else{ /* se non è registrato */
                 printf("ricevuto utente non registrato\n");
                 client_arr[index] = malloc(sizeof(clientinfo));
+                client_arr[index]->isonline=1;
                 client_arr[index]->name = malloc(MAXMSG*sizeof(char));
-                client_arr[index]->clientdir = malloc(MAXMSG*sizeof(char));
-                strcpy(client_arr[index]->name,tmpname);
-                free(tmpname);
-                if (getcwd(client_arr[index]->clientdir, MAXMSG*sizeof(char)) == NULL) {
+                client_arr[index]->clientdir = malloc(UNIX_PATH_MAX*sizeof(char));
+                client_arr[index]->filecounter=0;
+                strcpy(client_arr[index]->name,crequest);
+                if (getcwd(client_arr[index]->clientdir, MAXMSG*sizeof(char)) == NULL) { /*mi faccio restituire la current directory per creare la folder all'interno di data*/
                     perror("getcwd() error");
+                    write(fd,"KO", 3);
+                    continue;
                 }
-                strcat(client_arr[index]->clientdir,"/");
+                strcat(client_arr[index]->clientdir,"/data/");
                 strcat(client_arr[index]->clientdir,client_arr[index]->name);
-                mkdir(client_arr[index]->clientdir, 0777);
+                mkdir(client_arr[index]->clientdir, 0777); /*crea la directory con name*/
                 errno=0;
                 if ((cdir=opendir(client_arr[index]->clientdir))==NULL) {
 	                perror("Apertura dir fallita");
-                    write(fd,"register failed", 13);
+                    write(fd,"KO", 3);
+                    continue;
                 }
                 write(fd, "OK", 3);
             }
-            client_arr[index]->isonline=1;
         }
         else if (strcmp(crequest,"STORE")==0){
             FILE* tmpfiledesc;
-            char* filename = malloc(128*sizeof(char));
-            char* pathtofile = malloc(128*sizeof(char));
-            char* len = malloc(128*sizeof(char));
-            read(fd,filename,sizeof(filename));
-            strcat(pathtofile, client_arr[index]->clientdir);
+            crequest=strtok_r(NULL, " ", &last);
+            char* pathtofile = malloc(UNIX_PATH_MAX*sizeof(char));
+            strcpy(pathtofile, client_arr[index]->clientdir);
             strcat(pathtofile, "/");
-            strcat(pathtofile, filename);
-            printf("nome del file %s\n", filename);
+            strcat(pathtofile, crequest);
+            printf("nome del file %s\n", crequest);
             printf("path %s\n", pathtofile);
-            free(filename);
             if ((tmpfiledesc=fopen(pathtofile, "wb")) == NULL){
                 perror("errore creazione e scrittura file store");
-                continue;
+                write(fd, "KO", 3);
             }
-            read(fd,len,sizeof(len));
-            int dimbyte = strtol(len, NULL, 10);
-            free(len);
-            char* buffer = malloc(dimbyte*sizeof(char));
-            read(fd,buffer,dimbyte);
-            fwrite(buffer,dimbyte,1,tmpfiledesc);
+            crequest=strtok_r(NULL, " ", &last);
+            int dimbyte = strtol(crequest, NULL, 10);
+            printf("%d\n", dimbyte);
+            crequest=strtok_r(NULL, " ", &last);
+            int nread=0;
+            nread=strlen(last)*sizeof(char);
+            printf("nread da last: %d\n", nread);
+            printf("byte da leggere %d\n", dimbyte-nread);
+            fwrite(last,nread,1,tmpfiledesc);
+            printf("ho scritto %s\n", last);
+            char* data = malloc(dimbyte*sizeof(char));
+            lseek(fd,0,SEEK_SET);
+            int lung=0;
+            int btoread=dimbyte-nread;
+            while((lung=read(fd,data,btoread))>0){
+                printf("%d\n", lung);
+                btoread-=lung;
+                printf("devo leggere ancora: %d\n", btoread);
+                fwrite(data,lung,1,tmpfiledesc);
+            }
             fclose(tmpfiledesc);
+            client_arr[index]->filecounter++;
+            free(data);
+            free(pathtofile);
             write(fd,"OK",3);
+            pathtofile=NULL;
+            data=NULL;
         }
         else if (strcmp(crequest,"RETRIEVE")==0){
-            printf("retrieve richiesta\n");
             FILE* readfiledesc;
-            char* filename = malloc(128*sizeof(char));
-            char* pathtofile = malloc(128*sizeof(char));
-            read(fd,filename,sizeof(filename));
-            strcat(pathtofile, client_arr[index]->clientdir);
+            crequest=strtok_r(NULL, " ", &last);
+            char* pathtofile = malloc(UNIX_PATH_MAX*sizeof(char));
+            strcpy(pathtofile, client_arr[index]->clientdir);
             strcat(pathtofile, "/");
-            strcat(pathtofile, filename);
-            printf("nome del file %s\n", filename);
+            strcat(pathtofile, crequest);
+            printf("nome del file %s\n", crequest);
             printf("path %s\n", pathtofile);
-            free(filename);
             if ((readfiledesc=fopen(pathtofile, "rb")) == NULL){
                 perror("errore creazione e scrittura file store");
+                write(fd, "KO", 3);
                 continue;
             }
             int inputfd = fileno(readfiledesc);
             struct stat fst;
             fstat(inputfd, &fst);
             int dimbyte = fst.st_size;
-            dprintf(fd,"%d",dimbyte);
-            sleep(1);
-            printf("mando dim: %d\n", dimbyte);
-            char* buffer = malloc(128*sizeof(char));
+            char* buffer = malloc(dimbyte*sizeof(char));
             fread(buffer,dimbyte,1,readfiledesc);
-            printf("dal server ho letto: %s\n", buffer);
-            write(fd, buffer, dimbyte);
-            write(fd, "OK", 3);
+            dprintf(fd, "DATA %d \n %s", dimbyte, buffer);
+            free(pathtofile);
+            free(buffer);
+            pathtofile=NULL;
+            buffer=NULL;
         }
         else if (strcmp(crequest,"DELETE")==0){
-            char* filename = malloc(128*sizeof(char));
-            char* pathtofile = malloc(128*sizeof(char));
-            read(fd,filename,sizeof(filename));
-            strcat(pathtofile, client_arr[index]->clientdir);
+            crequest=strtok_r(NULL, " ", &last);
+            char* pathtofile = malloc(UNIX_PATH_MAX*sizeof(char));
+            strcpy(pathtofile, client_arr[index]->clientdir);
             strcat(pathtofile, "/");
-            strcat(pathtofile, filename);
+            strcat(pathtofile, crequest);
+            printf("%s\n", pathtofile);
             if(remove(pathtofile)!=0){
                 perror("errore delete server");
                 write(fd,"KO",3);
             }
-            else write(fd,"OK",3);
+            else {
+                client_arr[index]->filecounter--;
+                free(pathtofile);
+                write(fd,"OK",3);
+            }
+            pathtofile=NULL;
         }
         printf("ho terminato, immettere prossima op\n");
-        read(fd,crequest,MAXMSG);
+        memset(strreceived, 0, MAXMSG);
+        read(fd,strreceived,MAXMSG);
+        crequest=strtok_r(strreceived, " ", &last);
     }
     printf("Disconnetto client\n");
     client_arr[index]->isonline=0;
     if((closedir(cdir))==-1){
         perror("Chiusura dir fallita");
+        write(fd, "KO", 3);
     }
     write(fd, "OK", 3);
     close(fd);
@@ -232,6 +260,12 @@ int main (void) {
     struct sockaddr_un sa;
     strncpy(sa.sun_path, SOCKNAME, UNIX_PATH_MAX);
     sa.sun_family = AF_UNIX;
+    DIR* data = NULL;
+    mkdir("./data", 0777);
+    if((data = opendir("data"))==NULL){
+        perror("error opening data folder");
+        exit(EXIT_FAILURE);
+    }
     run_server(&sa);
     return 0;
 }
