@@ -2,7 +2,8 @@
  * @file objectstoreserver.c
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
  * @brief 
- * @version 0.1
+ * server object store
+ * @version 1.0
  * 
  * @copyright Copyright (c) 2019
  * 
@@ -10,7 +11,7 @@
 
 #include <sys/types.h> 
 #include <sys/socket.h> 
-#include <sys/un.h> /* necessario per ind su macchiona locale AF_UNIX */
+#include <sys/un.h> /* necessario per ind su macchina locale AF_UNIX */
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -23,7 +24,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 
-#define UNIX_PATH_MAX 104 /* lunghezza massima consentita per il path */
+#define UNIX_PATH_MAX 108 /* lunghezza massima consentita per il path */
 #define SOCKNAME "./objstore.sock"
 #define MAXMSG 128
 #define MAXREGUSR 1024 /*dimensione tabella hash*/
@@ -53,7 +54,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
     int fd = (int)arg;
     int index = -1;
     DIR* cdir = NULL;
-    char* strreceived = malloc(MAXMSG*sizeof(char));
+    char* strreceived = malloc(MAXMSG*sizeof(char)+1);
     char* crequest = malloc(MAXMSG*sizeof(char));
     char* last;
     read(fd,strreceived,MAXMSG);
@@ -81,7 +82,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
                 client_arr[index]->clientdir = malloc(UNIX_PATH_MAX*sizeof(char));
                 client_arr[index]->filecounter=0;
                 strcpy(client_arr[index]->name,crequest);
-                if (getcwd(client_arr[index]->clientdir, MAXMSG*sizeof(char)) == NULL) { /*mi faccio restituire la current directory per creare la folder all'interno di data*/
+                if (getcwd(client_arr[index]->clientdir, MAXMSG) == NULL) { /*mi faccio restituire la current directory per creare la folder all'interno di data*/
                     perror("getcwd() error");
                     write(fd,"KO", 3);
                     continue;
@@ -101,7 +102,8 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
         else if (strcmp(crequest,"STORE")==0){
             FILE* tmpfiledesc;
             crequest=strtok_r(NULL, " ", &last);
-            char* pathtofile = malloc(UNIX_PATH_MAX*sizeof(char));
+            char* pathtofile = malloc(UNIX_PATH_MAX*sizeof(char)+1);
+			memset(pathtofile, 0, UNIX_PATH_MAX);
             strcpy(pathtofile, client_arr[index]->clientdir);
             strcat(pathtofile, "/");
             strcat(pathtofile, crequest);
@@ -115,13 +117,12 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             int dimbyte = strtol(crequest, NULL, 10);
             printf("%d\n", dimbyte);
             crequest=strtok_r(NULL, " ", &last);
-            int nread=0;
-            nread=strlen(last)*sizeof(char);
+            int nread = strlen(last)*sizeof(char);
             printf("nread da last: %d\n", nread);
             printf("byte da leggere %d\n", dimbyte-nread);
             fwrite(last,nread,1,tmpfiledesc);
-            printf("ho scritto %s\n", last);
             char* data = malloc(dimbyte*sizeof(char));
+			memset(data, 0, dimbyte);
             lseek(fd,0,SEEK_SET);
             int lung=0;
             int btoread=dimbyte-nread;
@@ -143,13 +144,14 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             FILE* readfiledesc;
             crequest=strtok_r(NULL, " ", &last);
             char* pathtofile = malloc(UNIX_PATH_MAX*sizeof(char));
+            memset(pathtofile, 0, UNIX_PATH_MAX);
             strcpy(pathtofile, client_arr[index]->clientdir);
             strcat(pathtofile, "/");
             strcat(pathtofile, crequest);
             printf("nome del file %s\n", crequest);
             printf("path %s\n", pathtofile);
             if ((readfiledesc=fopen(pathtofile, "rb")) == NULL){
-                perror("errore creazione e scrittura file store");
+                perror("errore creazione e scrittura file retrieve");
                 write(fd, "KO", 3);
                 continue;
             }
@@ -157,9 +159,19 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             struct stat fst;
             fstat(inputfd, &fst);
             int dimbyte = fst.st_size;
-            char* buffer = malloc(dimbyte*sizeof(char));
-            fread(buffer,dimbyte,1,readfiledesc);
+            char* buffer = malloc(dimbyte*sizeof(char)+1);
+            memset(buffer, 0, dimbyte+1);
+
+            int lung=0;
+            int btoread=dimbyte;
+            while((lung=fread(buffer,btoread,1,readfiledesc))>0){
+                printf("%d\n", lung);
+                btoread-=lung;
+                printf("devo leggere ancora: %d\n", btoread);
+            }
+
             dprintf(fd, "DATA %d \n %s", dimbyte, buffer);
+            fclose(readfiledesc);
             free(pathtofile);
             free(buffer);
             pathtofile=NULL;
@@ -167,13 +179,14 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
         }
         else if (strcmp(crequest,"DELETE")==0){
             crequest=strtok_r(NULL, " ", &last);
-            char* pathtofile = malloc(UNIX_PATH_MAX*sizeof(char));
+            char* pathtofile = malloc(UNIX_PATH_MAX*sizeof(char)+1);
             strcpy(pathtofile, client_arr[index]->clientdir);
             strcat(pathtofile, "/");
             strcat(pathtofile, crequest);
             printf("%s\n", pathtofile);
             if(remove(pathtofile)!=0){
                 perror("errore delete server");
+                free(pathtofile);
                 write(fd,"KO",3);
             }
             else {
@@ -192,11 +205,11 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
     client_arr[index]->isonline=0;
     if((closedir(cdir))==-1){
         perror("Chiusura dir fallita");
-        write(fd, "KO", 3);
     }
     write(fd, "OK", 3);
     close(fd);
-    free(crequest);
+    free(strreceived);
+    strreceived=NULL;
     return (void*)0;
 }
 

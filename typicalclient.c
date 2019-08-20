@@ -1,8 +1,9 @@
 /**
  * @file typicalclient.c
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
- * @brief 
- * @version 0.1
+ * @brief
+ * client interattivo
+ * @version 1.0
  * 
  * @copyright Copyright (c) 2019
  * 
@@ -10,7 +11,7 @@
 
 #include <sys/types.h> 
 #include <sys/socket.h> 
-#include <sys/un.h> /* necessario per ind su macchiona locale AF_UNIX */
+#include <sys/un.h> /* necessario per ind su macchina locale AF_UNIX */
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
