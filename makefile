@@ -22,10 +22,10 @@ clientfortest.out: clientfortest.c
 
 test:
 	@echo "eseguo"
-	i=1; while [ "$$i" -le 50 ]; do \
-    	./clientfortest.out "client$$i" 1; \
-		i=$$((i + 1));\
-  	done
+	./objectstoreserver.out &
+	(i=1; while [ "$$i" -le 10 ]; do ./clientfortest.out "client$$i" 1; i=$$((i + 1)); done 1>testout1.log)
+	(i=1; while [ "$$i" -le 5 ]; do ./clientfortest.out "client$$i" 2; i=$$((i + 1)); done 1>testout2.log) &
+	(i=6; while [ "$$i" -le 10 ]; do ./clientfortest.out "client$$i" 3; i=$$((i + 1)); done 1>testout3.log) &
 
 clean:
 	@echo "cleaning generated files"
