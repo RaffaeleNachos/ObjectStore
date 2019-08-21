@@ -60,7 +60,6 @@ int main(int argc, char* argv[]){
             }
             fwrite(datablock,strlen(STR)*i*50*sizeof(char),1,newfile);
             fclose(newfile);
-            printf("ho scritto tutto clientfortest\n");
             FILE* inputfile;
             if ((inputfile = fopen(filename, "rb")) == NULL){
                 perror("Immettere nome file esistente");
@@ -86,21 +85,34 @@ int main(int argc, char* argv[]){
         for(int i = 1; i<=20; i++){
             memset(filename, 0, MAXFNAME);
             snprintf(filename, MAXFNAME, "f%d.txt", i);
-            FILE* newfile;
-            if ((newfile=fopen(filename, "wb")) == NULL){
-                perror("errore creazione e scrittura file client");
+            FILE* checkfile;
+            if ((checkfile=fopen(filename, "rb")) == NULL){
+                perror("errore apertura file retrieve client");
+            }
+            int inputfd = fileno(checkfile);
+            struct stat fst;
+            fstat(inputfd, &fst);
+            int dimbyte = fst.st_size;
+            char* buffer = malloc(dimbyte*sizeof(char)+1);
+            memset(buffer, 0, dimbyte+1);
+            int lung=0;
+            int btoread=dimbyte;
+            while((lung=fread(buffer,btoread,1,checkfile))>0){
+                btoread-=lung;
             }
             char* received = NULL;
             if((received=(char*)os_retrieve(filename))!=NULL){
-                fwrite(received,strlen(received)*sizeof(char),1,newfile);
-                printf("RETRIEVE andata a buon fine\n");
+                if(strcmp(received,buffer)==0) printf("RETRIEVE andata a buon fine\n");
+                else printf("RETRIEVE fallita\n");
             }
             else{
                 printf("RETRIEVE fallita\n");
             }
+            free(buffer);
+            buffer=NULL;
             free(received);
             received=NULL;
-            fclose(newfile);
+            fclose(checkfile);
         }
         free(filename);
         filename=NULL;
