@@ -18,12 +18,13 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
-#include "./objectstorelib.h"
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "./objectstorelib.h"
+#include "rwn.h"
 
 #define MAXMSG 128
-#define MAXFNAME 10
+#define NAME_MAX 255
 #define STR "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed eget purus a enim pulvinar dictum. STOP"
 
 int main(int argc, char* argv[]){
@@ -45,10 +46,10 @@ int main(int argc, char* argv[]){
     
     /* casi di test */
     if(test==1){
-        char* filename = malloc(MAXFNAME*sizeof(char));
+        char* filename = malloc(NAME_MAX*sizeof(char));
         for(int i = 1; i<=20; i++){
-            memset(filename, 0, MAXFNAME);
-            snprintf(filename, MAXFNAME, "f%d.txt", i);
+            memset(filename, 0, NAME_MAX);
+            snprintf(filename, NAME_MAX, "f%d.txt", i);
             char* datablock = malloc(strlen(STR)*i*50*sizeof(char)+1);
             memset(datablock, 0, strlen(STR)*i*50+1);
             for(int j = 1; j<=(i*50); j++){
@@ -81,10 +82,10 @@ int main(int argc, char* argv[]){
         filename=NULL;
     }
     else if(test==2){
-        char* filename = malloc(MAXFNAME*sizeof(char));
+        char* filename = malloc(NAME_MAX*sizeof(char));
         for(int i = 1; i<=20; i++){
-            memset(filename, 0, MAXFNAME);
-            snprintf(filename, MAXFNAME, "f%d.txt", i);
+            memset(filename, 0, NAME_MAX);
+            snprintf(filename, NAME_MAX, "f%d.txt", i);
             FILE* checkfile;
             if ((checkfile=fopen(filename, "rb")) == NULL){
                 perror("errore apertura file retrieve client");
@@ -95,11 +96,8 @@ int main(int argc, char* argv[]){
             int dimbyte = fst.st_size;
             char* buffer = malloc(dimbyte*sizeof(char)+1);
             memset(buffer, 0, dimbyte+1);
-            int lung=0;
             int btoread=dimbyte;
-            while((lung=fread(buffer,btoread,1,checkfile))>0){
-                btoread-=lung;
-            }
+            fread(buffer,btoread,1,checkfile);
             char* received = NULL;
             if((received=(char*)os_retrieve(filename))!=NULL){
                 if(strcmp(received,buffer)==0) printf("RETRIEVE andata a buon fine\n");
@@ -121,7 +119,7 @@ int main(int argc, char* argv[]){
         char* filename = malloc(7*sizeof(char));
         for(int i = 1; i<=20; i++){
             memset(filename, 0, 7);
-            snprintf(filename, MAXFNAME, "f%d.txt", i);
+            snprintf(filename, NAME_MAX, "f%d.txt", i);
             if(os_delete(filename)==1){
                  printf("DELETE andata a buon fine\n");
             }

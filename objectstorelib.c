@@ -10,6 +10,7 @@
  */
 
 #include "./objectstorelib.h"
+#include "rwn.h"
 #include <sys/types.h> 
 #include <sys/socket.h> 
 #include <sys/un.h> /* necessario per ind su macchina locale AF_UNIX */
@@ -62,12 +63,8 @@ int os_store(char* name, void* block, size_t len){
     }
     char* data = malloc(len*sizeof(char)+1);
     memset(data, 0, len*sizeof(char)+1);
-    int lung=0;
     int btoread=len; /*byte che devo leggere*/
-    while((lung=fread(data,btoread,1,block))>0){
-        btoread-=lung;
-        //printf("devo leggere ancora: %d\n", btoread);
-    }
+    fread(data,btoread,1,block);
     dprintf(fd_skt, "STORE %s %zu \n %s", name, len, data);
     response = malloc(MAXMSG*sizeof(char));
     read(fd_skt,response,sizeof(response));
@@ -91,9 +88,9 @@ void *os_retrieve(char* name){
     }
     dprintf(fd_skt, "RETRIEVE %s \n", name);
     response = malloc(MAXMSG*sizeof(char));
-    char* buffer;
-    char* last;
-    char* token;
+    char* buffer = NULL;
+    char* last = NULL;
+    char* token = NULL;
     read(fd_skt,response,MAXMSG);
     token=strtok_r(response, " ", &last);
     if (strcmp(token,"DATA")==0){
@@ -110,13 +107,9 @@ void *os_retrieve(char* name){
         char* data = malloc(dimbyte*sizeof(char)); /*dove vado a copiare temporaneamente*/
         memset(data, 0, dimbyte);
         lseek(fd_skt,0,SEEK_SET); /*mi sposto all'inizio del file*/
-        int lung=0;
         int btoread=dimbyte-nread; /*i byte da leggere sono i byte totale - i byte letti dal messaggio*/
-        while((lung=read(fd_skt,data,btoread))>0){
-            btoread-=lung;
-            //printf("devo leggere ancora: %d\n", btoread);
-            strncat(buffer,data,lung);
-        }
+        readn(fd_skt,data,btoread);
+        strncat(buffer,data,btoread);
         free(data);
         data=NULL;
         free(response);
@@ -151,7 +144,7 @@ int os_disconnect(){
     if(fd_skt==-1){
         return 1;
     }
-    write(fd_skt, "LEAVE", 6);
+    writen(fd_skt, "LEAVE", 6);
     response = malloc(MAXMSG*sizeof(char));
     read(fd_skt,response,sizeof(response));
     if (strcmp(response, "OK")==0){

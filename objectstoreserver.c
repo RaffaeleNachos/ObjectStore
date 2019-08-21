@@ -24,6 +24,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <signal.h>
+#include "rwn.h"
 
 #define UNIX_PATH_MAX 108 /* lunghezza massima consentita per il path */
 #define SOCKNAME "./objstore.sock"
@@ -61,7 +62,7 @@ static void* checksignals(void *arg) {
 	        return NULL;
 	    }
 	    switch(sig) {
-	    case SIGINT: write(1,"sigint", 7);
+	    case SIGINT: //pulizia e chiusura
 	    case SIGTERM: //pulizia
 	    case SIGQUIT:
 	        //printf("ricevuto segnale %s, esco\n", (sig==SIGINT) ? "SIGINT": ((sig==SIGTERM)?"SIGTERM":"SIGQUIT") );
@@ -81,7 +82,7 @@ unsigned long hash(char *str){ /*funzione hash basata su stringhe*/
 }
 
 static void* myworker (void* arg){ /*thread detached worker che gestisce un singolo client*/
-    int fd = (long)arg;
+    long fd = (long)arg;
     int index = -1;
     char* strreceived = malloc(MAXMSG*sizeof(char)+1);
     char* crequest = malloc(MAXMSG*sizeof(char));
@@ -96,14 +97,14 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             if((client_arr[index]!=NULL)){ /* se è già registrato */
                 if(client_arr[index]->isonline==1){
                     perror("Ricevuto utente già online");
-                    write(fd, "KO", 3);
+                    writen(fd, "KO", 3);
                     continue;
                 }
                 else {
                     pthread_mutex_lock(&cmtx);
                     numclientconn++;
                     pthread_mutex_unlock(&cmtx);
-                    write(fd, "OK", 3);
+                    writen(fd, "OK", 3);
                 }
             }
             else{ /* se non è registrato */
@@ -113,9 +114,9 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
                 client_arr[index]->name = malloc(MAXMSG*sizeof(char));
                 client_arr[index]->clientdir = malloc(UNIX_PATH_MAX*sizeof(char));
                 strcpy(client_arr[index]->name,crequest);
-                if (getcwd(client_arr[index]->clientdir, MAXMSG) == NULL) { /*mi faccio restituire la current directory per creare la folder all'interno di data*/
+                if (getcwd(client_arr[index]->clientdir, UNIX_PATH_MAX) == NULL) { /*mi faccio restituire la current directory per creare la folder all'interno di data*/
                     perror("getcwd() error");
-                    write(fd, "KO", 3);
+                    writen(fd, "KO", 3);
                     continue;
                 }
                 strcat(client_arr[index]->clientdir,"/data/");
@@ -124,7 +125,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
                 pthread_mutex_lock(&cmtx);
                 numclientconn++;
                 pthread_mutex_unlock(&cmtx);
-                write(fd, "OK", 3);
+                writen(fd, "OK", 3);
             }
         }
         else if (strcmp(crequest,"STORE")==0){
@@ -138,7 +139,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             printf("path %s\n", pathtofile);
             if ((tmpfiledesc=fopen(pathtofile, "wb")) == NULL){
                 perror("errore creazione e scrittura file store");
-                write(fd,"KO", 3);
+                writen(fd,"KO", 3);
             }
             crequest=strtok_r(NULL, " ", &last);
             int dimbyte = strtol(crequest, NULL, 10);
@@ -146,18 +147,15 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             crequest=strtok_r(NULL, " ", &last);
             int nread = strlen(last)*sizeof(char);
             //printf("nread da last: %d\n", nread);
+            //sono triste
             //printf("byte da leggere %d\n", dimbyte-nread);
             fwrite(last,nread,1,tmpfiledesc);
             char* data = malloc(dimbyte*sizeof(char));
 			memset(data, 0, dimbyte);
             lseek(fd,0,SEEK_SET);
-            int lung=0;
             int btoread=dimbyte-nread;
-            while((lung=read(fd,data,btoread))>0){
-                btoread-=lung;
-                //printf("devo leggere ancora: %d\n", btoread);
-                fwrite(data,lung,1,tmpfiledesc);
-            }
+            readn(fd,data,btoread);
+            fwrite(data,dimbyte,1,tmpfiledesc);
             fclose(tmpfiledesc);
             free(data);
             free(pathtofile);
@@ -169,7 +167,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             pthread_mutex_lock(&dmtx);
             totsize+=dimbyte;
             pthread_mutex_unlock(&dmtx);
-            write(fd,"OK",3);
+            writen(fd,"OK",3);
         }
         else if (strcmp(crequest,"RETRIEVE")==0){
             FILE* readfiledesc;
@@ -183,7 +181,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             //printf("path %s\n", pathtofile);
             if ((readfiledesc=fopen(pathtofile, "rb")) == NULL){
                 perror("errore creazione e scrittura file retrieve");
-                write(fd,"KO", 3);
+                writen(fd,"KO", 3);
                 continue;
             }
             int inputfd = fileno(readfiledesc);
@@ -192,14 +190,8 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             int dimbyte = fst.st_size;
             char* buffer = malloc(dimbyte*sizeof(char)+1);
             memset(buffer, 0, dimbyte+1);
-
-            int lung=0;
             int btoread=dimbyte;
-            while((lung=fread(buffer,btoread,1,readfiledesc))>0){
-                btoread-=lung;
-                //printf("devo leggere ancora: %d\n", btoread);
-            }
-
+            fread(buffer,btoread,1,readfiledesc);
             dprintf(fd, "DATA %d \n %s", dimbyte, buffer);
             fclose(readfiledesc);
             free(pathtofile);
@@ -219,7 +211,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             if(remove(pathtofile)!=0){
                 perror("errore delete server");
                 free(pathtofile);
-                write(fd,"KO", 3);
+                writen(fd,"KO", 3);
             }
             else {
                 free(pathtofile);
@@ -229,7 +221,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
                 pthread_mutex_lock(&dmtx);
                 totsize-=st.st_size;
                 pthread_mutex_unlock(&dmtx);
-                write(fd,"OK",3);
+                writen(fd,"OK",3);
             }
             pathtofile=NULL;
         }
@@ -243,7 +235,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
     pthread_mutex_lock(&cmtx);
     numclientconn--;
     pthread_mutex_unlock(&cmtx);
-    write(fd, "OK", 3);
+    writen(fd, "OK", 3);
     close(fd);
     free(strreceived);
     strreceived=NULL;
@@ -253,7 +245,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
     return (void*)0;
 }
 
-void spawnmythread (int arg){
+void spawnmythread (long arg){
     pthread_attr_t t_attr;
     pthread_t t_id;
     errno=0;
@@ -271,7 +263,7 @@ void spawnmythread (int arg){
 	    return;
     }
     errno=0;
-    if (pthread_create(&t_id, &t_attr, myworker, &arg) != 0) {
+    if (pthread_create(&t_id, &t_attr, myworker, (void *) arg) != 0) {
 	    perror("Thread create fallita");
 	    pthread_attr_destroy(&t_attr);
 	    close(arg);
@@ -281,7 +273,7 @@ void spawnmythread (int arg){
 }
 
 static void run_server(struct sockaddr_un * psa){
-    int fd_skt, fd_c; /*file descriptor socket e client*/ 
+    long fd_skt, fd_c; /*file descriptor socket e client*/ 
     errno = 0;
     if ((fd_skt = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         perror("Non è stato possibile creare socket");
