@@ -27,18 +27,20 @@ clientfortest.out: clientfortest.c
 	$(CC) $(CFLAGS) $< -o $@ -L . objectstorelib.a rwn.a
 
 test:
-	echo "eseguo" 
-	gnome-terminal -- valgrind --leak-check=full ./objectstoreserver.out
+	@echo "eseguo"
+	@gnome-terminal -- valgrind --leak-check=full ./objectstoreserver.out
 	declare -a pids && \
 	i=1; while [ "$$i" -le 50 ]; do \
-	(./clientfortest.out "client$$i" 1 & pids[$$i]=$$!) 1>>"testout.log" ; \
+	./clientfortest.out "client$$i" 1 1>>"testout.log" & pids[$$i]=$$!; \
 	i=$$((i + 1)); \
 	done && \
 	i=1; while [ "$$i" -le 50 ]; do \
-	wait ${pids[$$i]} ; \
+	echo $$i $${pids[$$i]}; \
+	wait $${pids[$$i]}; \
 	i=$$((i + 1)); \
 	done
-	echo "TEST 1 TERMINATO"
+	@echo "done"
+	@echo "TEST 1 TERMINATO"
 	(i=1; while [ "$$i" -le 30 ]; do \
 	(./clientfortest.out "client$$i" 2 &) 1>>"testout.log" ; \
 	i=$$((i + 1)); \
@@ -47,8 +49,9 @@ test:
 	(./clientfortest.out "client$$i" 3 &) 1>>"testout.log" ; \
 	i=$$((i + 1)); \
 	done)
-	echo "done" 
+	@echo "TEST 2 e 3 TERMINATI" 
 
 clean:
 	@echo "cleaning generated files"
 	-rm -rf $(OUTFILES) $(OBJFILES) *.txt *.sock ./data *.log
+

@@ -38,10 +38,10 @@ int main(int argc, char* argv[]){
     
     /*register*/
     if(os_connect(name)==1){
-        printf("REGISTER andata a buon fine\n");
+        printf("REGISTER %s OK\n", name);
     }
     else{
-        printf("REGISTER fallita\n");
+        printf("REGISTER %s FAIL\n", name);
     }
     
     /* casi di test */
@@ -70,10 +70,10 @@ int main(int argc, char* argv[]){
             struct stat fst;
             fstat(inputfile, &fst);
             if(os_store(filename, (void*) inputfile, fst.st_size)==1){
-                printf("STORE andata a buon fine\n");
+                printf("STORE %s di %s OK\n", filename, name);
             }
             else{
-                printf("STORE fallita\n");
+                printf("STORE %s di %s FAIL\n", filename, name);
             }
             free(datablock);
             datablock=NULL;
@@ -98,11 +98,11 @@ int main(int argc, char* argv[]){
             readn(checkfile,buffer,dimbyte);
             char* received = NULL;
             if((received=(char*)os_retrieve(filename))!=NULL){
-                if(strcmp(received,buffer)==0) printf("RETRIEVE andata a buon fine\n");
-                else printf("RETRIEVE fallita\n");
+                if(strcmp(received,buffer)==0) printf("RETRIEVE %s di %s OK\n", filename, name);
+                else printf("RETRIEVE %s di %s FAIL\n", filename, name);
             }
             else{
-                printf("RETRIEVE fallita\n");
+                printf("RETRIEVE %s di %s FAIL\n", filename, name);
             }
             free(buffer);
             buffer=NULL;
@@ -119,10 +119,10 @@ int main(int argc, char* argv[]){
             memset(filename, 0, NAME_MAX);
             snprintf(filename, NAME_MAX, "f%d.txt", i);
             if(os_delete(filename)==1){
-                 printf("DELETE andata a buon fine\n");
+                printf("DELETE %s di %s OK\n", filename, name);
             }
             else{
-                printf("DELETE fallita\n");
+                printf("DELETE %s di %s FAIL\n", filename, name);
             }
         }
         free(filename);
@@ -135,10 +135,10 @@ int main(int argc, char* argv[]){
     
     /*disconnessione*/
     if(os_disconnect()==1){
-        printf("DISCONNECT andata a buon fine\n");
+        printf("DISCONNECT %s OK\n", name);
     }
     else{
-        printf("DISCONNECT fallita\n");
+        printf("DISCONNECT %s FAIL\n", name);
     }
     free(name);
     exit(EXIT_SUCCESS); 
