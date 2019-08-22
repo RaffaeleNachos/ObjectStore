@@ -20,12 +20,17 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include "./objectstorelib.h"
 #include "rwn.h"
 
 #define MAXMSG 128
 #define NAME_MAX 255
 #define STR "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed eget purus a enim pulvinar dictum. STOP"
+
+static int num_ok_op = 0;
+static int num_fail_op = 0;
 
 int main(int argc, char* argv[]){
     if(argc!=3){
@@ -35,13 +40,15 @@ int main(int argc, char* argv[]){
     char* name = malloc(MAXMSG*sizeof(char)+1);
     strcpy(name,argv[1]);
     int test = strtol(argv[2],NULL,10);
-    
+    struct rusage clientusage;
     /*register*/
     if(os_connect(name)==1){
         printf("REGISTER %s OK\n", name);
+        num_ok_op++;
     }
     else{
         printf("REGISTER %s FAIL\n", name);
+        num_fail_op++;
     }
     
     /* casi di test */
@@ -71,9 +78,11 @@ int main(int argc, char* argv[]){
             fstat(inputfile, &fst);
             if(os_store(filename, (void*) inputfile, fst.st_size)==1){
                 printf("STORE %s di %s OK\n", filename, name);
+                num_ok_op++;
             }
             else{
                 printf("STORE %s di %s FAIL\n", filename, name);
+                num_fail_op++;
             }
             free(datablock);
             datablock=NULL;
@@ -98,11 +107,18 @@ int main(int argc, char* argv[]){
             readn(checkfile,buffer,dimbyte);
             char* received = NULL;
             if((received=(char*)os_retrieve(filename))!=NULL){
-                if(strcmp(received,buffer)==0) printf("RETRIEVE %s di %s OK\n", filename, name);
-                else printf("RETRIEVE %s di %s FAIL\n", filename, name);
+                if(strcmp(received,buffer)==0){
+                    printf("RETRIEVE %s di %s OK\n", filename, name);
+                    num_ok_op++;
+                }
+                else {
+                    printf("RETRIEVE %s di %s FAIL\n", filename, name);
+                    num_fail_op++;
+                }
             }
             else{
                 printf("RETRIEVE %s di %s FAIL\n", filename, name);
+                num_fail_op++;
             }
             free(buffer);
             buffer=NULL;
@@ -120,9 +136,11 @@ int main(int argc, char* argv[]){
             snprintf(filename, NAME_MAX, "f%d.txt", i);
             if(os_delete(filename)==1){
                 printf("DELETE %s di %s OK\n", filename, name);
+                num_ok_op++;
             }
             else{
                 printf("DELETE %s di %s FAIL\n", filename, name);
+                num_fail_op++;
             }
         }
         free(filename);
@@ -136,10 +154,22 @@ int main(int argc, char* argv[]){
     /*disconnessione*/
     if(os_disconnect()==1){
         printf("DISCONNECT %s OK\n", name);
+        num_ok_op++;
     }
     else{
         printf("DISCONNECT %s FAIL\n", name);
+        num_fail_op++;
     }
+    if((getrusage(RUSAGE_SELF,&clientusage))==-1){
+        perror("impossibile ottenere info su uso client");
+    }
+
+    printf("########## RIEPILOGO CLIENT ##########\n");
+    printf("Numero operazioni effettuate: %d\n", num_ok_op+num_fail_op);
+    printf("Numero operazioni success: %d\n", num_ok_op);
+    printf("Numero operazioni failed: %d\n", num_fail_op);
+    printf("Tempo in UserMode: %ld.%lds\n", clientusage.ru_utime.tv_sec, clientusage.ru_utime.tv_usec);
+    printf("Tempo in KernelMode: %ld.%lds\n", clientusage.ru_stime.tv_sec, clientusage.ru_stime.tv_usec);
     free(name);
     exit(EXIT_SUCCESS); 
 }
