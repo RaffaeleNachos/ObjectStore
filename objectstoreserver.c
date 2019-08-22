@@ -3,7 +3,7 @@
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
  * @brief 
  * server object store
- * @version 1.0
+ * @version 2.0
  * 
  * @copyright Copyright (c) 2019
  * 
@@ -129,7 +129,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             }
         }
         else if (strcmp(crequest,"STORE")==0){
-            FILE* tmpfiledesc;
+            int tmpfiledesc;
             crequest=strtok_r(NULL, " ", &last);
             char* pathtofile = malloc(UNIX_PATH_MAX*sizeof(char)+1);
 			memset(pathtofile, 0, UNIX_PATH_MAX);
@@ -137,7 +137,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             strcat(pathtofile, "/");
             strcat(pathtofile, crequest);
             printf("path %s\n", pathtofile);
-            if ((tmpfiledesc=fopen(pathtofile, "wb")) == NULL){
+            if ((tmpfiledesc=open(pathtofile, O_WRONLY | O_CREAT, 0777)) == -1){
                 perror("errore creazione e scrittura file store");
                 writen(fd,"KO", 3);
             }
@@ -149,14 +149,14 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             //printf("nread da last: %d\n", nread);
             //sono triste
             //printf("byte da leggere %d\n", dimbyte-nread);
-            fwrite(last,nread,1,tmpfiledesc);
-            char* data = malloc(dimbyte*sizeof(char));
-			memset(data, 0, dimbyte);
-            lseek(fd,0,SEEK_SET);
+            writen(tmpfiledesc, last, nread);
             int btoread=dimbyte-nread;
+            char* data = malloc(btoread*sizeof(char));
+			memset(data, 0, btoread);
+            lseek(fd,0,SEEK_SET);
             readn(fd,data,btoread);
-            fwrite(data,dimbyte,1,tmpfiledesc);
-            fclose(tmpfiledesc);
+            writen(tmpfiledesc,data,btoread);
+            close(tmpfiledesc);
             free(data);
             free(pathtofile);
             pathtofile=NULL;
@@ -170,7 +170,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             writen(fd,"OK",3);
         }
         else if (strcmp(crequest,"RETRIEVE")==0){
-            FILE* readfiledesc;
+            int readfiledesc;
             crequest=strtok_r(NULL, " ", &last);
             char* pathtofile = malloc(UNIX_PATH_MAX*sizeof(char));
             memset(pathtofile, 0, UNIX_PATH_MAX);
@@ -179,21 +179,19 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             strcat(pathtofile, crequest);
             //printf("nome del file %s\n", crequest);
             //printf("path %s\n", pathtofile);
-            if ((readfiledesc=fopen(pathtofile, "rb")) == NULL){
+            if ((readfiledesc=open(pathtofile, O_RDONLY)) == -1){
                 perror("errore creazione e scrittura file retrieve");
                 writen(fd,"KO", 3);
                 continue;
             }
-            int inputfd = fileno(readfiledesc);
             struct stat fst;
-            fstat(inputfd, &fst);
+            fstat(readfiledesc, &fst);
             int dimbyte = fst.st_size;
             char* buffer = malloc(dimbyte*sizeof(char)+1);
             memset(buffer, 0, dimbyte+1);
-            int btoread=dimbyte;
-            fread(buffer,btoread,1,readfiledesc);
+            readn(readfiledesc,buffer,dimbyte);
             dprintf(fd, "DATA %d \n %s", dimbyte, buffer);
-            fclose(readfiledesc);
+            close(readfiledesc);
             free(pathtofile);
             free(buffer);
             pathtofile=NULL;

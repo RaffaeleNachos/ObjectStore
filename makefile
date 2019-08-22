@@ -28,7 +28,7 @@ clientfortest.out: clientfortest.c
 test:
 	@echo "eseguo"
 	gnome-terminal -- valgrind --leak-check=full ./objectstoreserver.out
-	(i=1; while [ "$$i" -le 50 ]; do (valgrind --leak-check=full --log-file="vagrindcl$$i.log" ./clientfortest.out "client$$i" 1 &) 1>>"testout$$i.log" ; i=$$((i + 1)); done)
+	(i=1; while [ "$$i" -le 50 ]; do (valgrind --leak-check=full --log-file="vagrindcl$$i.log" ./clientfortest.out "client$$i" 3 &) 1>>"testout$$i.log" ; i=$$((i + 1)); done)
 
 clean:
 	@echo "cleaning generated files"

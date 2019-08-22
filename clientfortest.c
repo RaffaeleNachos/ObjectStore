@@ -55,20 +55,20 @@ int main(int argc, char* argv[]){
             for(int j = 1; j<=(i*50); j++){
                 strncat(datablock,STR,sizeof(STR));
             }
-            FILE* newfile;
-            if ((newfile=fopen(filename, "wb")) == NULL){
+            int newfile;
+            if ((newfile=open(filename, O_CREAT | O_WRONLY, 0777)) == -1){
                 perror("errore creazione e scrittura file client");
+                continue;
             }
-            fwrite(datablock,strlen(STR)*i*50*sizeof(char),1,newfile);
-            fclose(newfile);
-            FILE* inputfile;
-            if ((inputfile = fopen(filename, "rb")) == NULL){
+            writen(newfile, datablock, strlen(STR)*i*50*sizeof(char));
+            close(newfile);
+            int inputfile;
+            if ((inputfile = open(filename, O_RDONLY)) == -1){
                 perror("Immettere nome file esistente");
                 continue;
             }
-            int inputfd = fileno(inputfile);
             struct stat fst;
-            fstat(inputfd, &fst);
+            fstat(inputfile, &fst);
             if(os_store(filename, (void*) inputfile, fst.st_size)==1){
                 printf("STORE andata a buon fine\n");
             }
@@ -86,18 +86,16 @@ int main(int argc, char* argv[]){
         for(int i = 1; i<=20; i++){
             memset(filename, 0, NAME_MAX);
             snprintf(filename, NAME_MAX, "f%d.txt", i);
-            FILE* checkfile;
-            if ((checkfile=fopen(filename, "rb")) == NULL){
+            int checkfile;
+            if ((checkfile=open(filename, O_RDONLY)) == -1){
                 perror("errore apertura file retrieve client");
             }
-            int inputfd = fileno(checkfile);
             struct stat fst;
-            fstat(inputfd, &fst);
+            fstat(checkfile, &fst);
             int dimbyte = fst.st_size;
             char* buffer = malloc(dimbyte*sizeof(char)+1);
             memset(buffer, 0, dimbyte+1);
-            int btoread=dimbyte;
-            fread(buffer,btoread,1,checkfile);
+            readn(checkfile,buffer,dimbyte);
             char* received = NULL;
             if((received=(char*)os_retrieve(filename))!=NULL){
                 if(strcmp(received,buffer)==0) printf("RETRIEVE andata a buon fine\n");
@@ -110,15 +108,15 @@ int main(int argc, char* argv[]){
             buffer=NULL;
             free(received);
             received=NULL;
-            fclose(checkfile);
+            close(checkfile);
         }
         free(filename);
         filename=NULL;
     }
     else if(test==3){
-        char* filename = malloc(7*sizeof(char));
+        char* filename = malloc(NAME_MAX*sizeof(char));
         for(int i = 1; i<=20; i++){
-            memset(filename, 0, 7);
+            memset(filename, 0, NAME_MAX);
             snprintf(filename, NAME_MAX, "f%d.txt", i);
             if(os_delete(filename)==1){
                  printf("DELETE andata a buon fine\n");

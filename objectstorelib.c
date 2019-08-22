@@ -64,7 +64,7 @@ int os_store(char* name, void* block, size_t len){
     char* data = malloc(len*sizeof(char)+1);
     memset(data, 0, len*sizeof(char)+1);
     int btoread=len; /*byte che devo leggere*/
-    fread(data,btoread,1,block);
+    readn((int)block,data,btoread);
     dprintf(fd_skt, "STORE %s %zu \n %s", name, len, data);
     response = malloc(MAXMSG*sizeof(char));
     read(fd_skt,response,sizeof(response));
@@ -87,7 +87,7 @@ void *os_retrieve(char* name){
         return (void*)NULL;
     }
     dprintf(fd_skt, "RETRIEVE %s \n", name);
-    response = malloc(MAXMSG*sizeof(char));
+    response = malloc(MAXMSG*sizeof(char)+1);
     char* buffer = NULL;
     char* last = NULL;
     char* token = NULL;
@@ -97,17 +97,17 @@ void *os_retrieve(char* name){
         token=strtok_r(NULL, " ", &last);
         int dimbyte = strtol(token, NULL, 10);
         //printf("dimbyte ricevuta %d\n", dimbyte);
-        buffer = malloc((dimbyte)*sizeof(char));
-        memset(buffer, 0, dimbyte);
+        buffer = malloc((dimbyte)*sizeof(char)+1);
+        memset(buffer, 0, dimbyte+1);
         token=strtok_r(NULL, " ", &last); /*qui leggo \n*/
         int nread = strlen(last)*sizeof(char);
         //printf("nread da last: %d\n", nread);
         //printf("byte da leggere %d\n", dimbyte-nread);
         strcpy(buffer,last); /*copio la prima parte*/
-        char* data = malloc(dimbyte*sizeof(char)); /*dove vado a copiare temporaneamente*/
-        memset(data, 0, dimbyte);
-        lseek(fd_skt,0,SEEK_SET); /*mi sposto all'inizio del file*/
         int btoread=dimbyte-nread; /*i byte da leggere sono i byte totale - i byte letti dal messaggio*/
+        char* data = malloc(btoread*sizeof(char)); /*dove vado a copiare temporaneamente*/
+        memset(data, 0, btoread);
+        lseek(fd_skt,0,SEEK_SET); /*mi sposto all'inizio del file*/
         readn(fd_skt,data,btoread);
         strncat(buffer,data,btoread);
         free(data);
