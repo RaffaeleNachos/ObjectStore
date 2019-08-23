@@ -3,6 +3,7 @@
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
  * @brief 
  * libreria utilizzata dal client
+ * maggiori informazioni contenute nel file objectstorelib.h
  * @version 2.0
  * 
  * @copyright Copyright (c) 2019

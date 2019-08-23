@@ -3,7 +3,7 @@
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
  * @brief 
  * server object store
- * @version 2.0
+ * @version 3.0
  * 
  * @copyright Copyright (c) 2019
  * 
@@ -65,8 +65,7 @@ static void* checksignals(void *arg) {
 	    case SIGINT: //pulizia e chiusura
 	    case SIGTERM: //pulizia
 	    case SIGQUIT:
-	        //printf("ricevuto segnale %s, esco\n", (sig==SIGINT) ? "SIGINT": ((sig==SIGTERM)?"SIGTERM":"SIGQUIT") );
-	        return NULL;
+        case SIGUSR1: printf("ricevuto segnale SIGUSR1\n");
 	    default:  ; 
 	    }
     }

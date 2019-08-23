@@ -31,6 +31,7 @@ test:
 	@gnome-terminal -- valgrind --leak-check=full ./objectstoreserver.out
 	declare -a pids && \
 	i=1; while [ "$$i" -le 50 ]; do \
+	echo "Lancio client$$i TEST 1" >>"testout.log"; \
 	./clientfortest.out "client$$i" 1 1>>"testout.log" & pids[$$i]=$$!; \
 	i=$$((i + 1)); \
 	done && \
@@ -42,14 +43,17 @@ test:
 	@echo "done"
 	@echo "TEST 1 TERMINATO"
 	(i=1; while [ "$$i" -le 30 ]; do \
+	echo "Lancio client$$i TEST 2" >>"testout.log"; \
 	(./clientfortest.out "client$$i" 2 &) 1>>"testout.log" ; \
 	i=$$((i + 1)); \
 	done)
 	(i=31; while [ "$$i" -le 50 ]; do \
+	echo "Lancio client$$i TEST 3" >>"testout.log"; \
 	(./clientfortest.out "client$$i" 3 &) 1>>"testout.log" ; \
 	i=$$((i + 1)); \
 	done)
-	@echo "TEST 2 e 3 TERMINATI" 
+	@echo "TEST 2 e 3 TERMINATI"
+	bash ./testsum.sh
 
 clean:
 	@echo "cleaning generated files"

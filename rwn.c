@@ -1,3 +1,16 @@
+/**
+ * @file rwn.c
+ * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
+ * @brief
+ * implementazione delle funzioni readn e writen. 
+ * maggiori informazioni contenute nel file rwn.h
+ * @version 0.1
+ * @date 2019-08-23
+ * 
+ * @copyright Copyright (c) 2019
+ * 
+ */
+
 #include "./objectstorelib.h"
 #include <unistd.h>
 #include <stdio.h>
