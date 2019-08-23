@@ -28,7 +28,8 @@ clientfortest.out: clientfortest.c
 
 test:
 	@echo "eseguo"
-	@gnome-terminal -- valgrind --leak-check=full ./objectstoreserver.out
+	@gnome-terminal -- ./objectstoreserver.out
+	@sleep 1
 	declare -a pids && \
 	i=1; while [ "$$i" -le 50 ]; do \
 	echo "Lancio client$$i TEST 1" >>"testout.log"; \

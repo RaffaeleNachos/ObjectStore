@@ -36,17 +36,15 @@ int main(int argc, char* argv[]){
         perror("./eseguibile nomeclient numerotest");
         exit(EXIT_FAILURE);
     }
-    char* name = malloc(MAXMSG*sizeof(char)+1);
-    strcpy(name,argv[1]);
     int test = strtol(argv[2],NULL,10);
     struct rusage clientusage;
     /*register*/
-    if(os_connect(name)==1){
-        printf("REGISTER %s OK\n", name);
+    if(os_connect(argv[1])==1){
+        printf("REGISTER %s OK\n", argv[1]);
         num_ok_op++;
     }
     else{
-        printf("REGISTER %s FAIL\n", name);
+        printf("REGISTER %s FAIL\n", argv[1]);
         num_fail_op++;
     }
     
@@ -56,31 +54,35 @@ int main(int argc, char* argv[]){
         for(int i = 1; i<=20; i++){
             memset(filename, 0, NAME_MAX);
             snprintf(filename, NAME_MAX, "f%d.txt", i);
-            char* datablock = malloc(strlen(STR)*i*50*sizeof(char)+1);
-            memset(datablock, 0, strlen(STR)*i*50+1);
+            
+            /*creazione dei file*/
+            char* datablock = malloc(strlen(STR)*i*50*sizeof(char)+1); //+1 per strcat che aggiunge '\0' alla fine
+            memset(datablock, 0, strlen(STR)*i*50*sizeof(char)+1);
             for(int j = 1; j<=(i*50); j++){
                 strncat(datablock,STR,sizeof(STR));
             }
-            int newfile;
+            long newfile;
             if ((newfile=open(filename, O_CREAT | O_WRONLY, 0777)) == -1){
                 perror("errore creazione e scrittura file client");
                 continue;
             }
             writen(newfile, datablock, strlen(STR)*i*50*sizeof(char));
             close(newfile);
-            int inputfile;
+            
+            /*esecuzione store*/
+            long inputfile;
             if ((inputfile = open(filename, O_RDONLY)) == -1){
                 perror("Immettere nome file esistente");
                 continue;
             }
             struct stat fst;
             fstat(inputfile, &fst);
-            if(os_store(filename, (void*) inputfile, fst.st_size)==1){
-                printf("STORE %s di %s OK\n", filename, name);
+            if(os_store(filename, (void*)inputfile, fst.st_size)==1){
+                printf("STORE %s di %s OK\n", filename, argv[1]);
                 num_ok_op++;
             }
             else{
-                printf("STORE %s di %s FAIL\n", filename, name);
+                printf("STORE %s di %s FAIL\n", filename, argv[1]);
                 num_fail_op++;
             }
             free(datablock);
@@ -107,16 +109,16 @@ int main(int argc, char* argv[]){
             char* received = NULL;
             if((received=(char*)os_retrieve(filename))!=NULL){
                 if(strcmp(received,buffer)==0){
-                    printf("RETRIEVE %s di %s OK\n", filename, name);
+                    printf("RETRIEVE %s di %s OK\n", filename, argv[1]);
                     num_ok_op++;
                 }
                 else {
-                    printf("RETRIEVE %s di %s FAIL\n", filename, name);
+                    printf("RETRIEVE %s di %s FAIL\n", filename, argv[1]);
                     num_fail_op++;
                 }
             }
             else{
-                printf("RETRIEVE %s di %s FAIL\n", filename, name);
+                printf("RETRIEVE %s di %s FAIL\n", filename, argv[1]);
                 num_fail_op++;
             }
             free(buffer);
@@ -134,11 +136,11 @@ int main(int argc, char* argv[]){
             memset(filename, 0, NAME_MAX);
             snprintf(filename, NAME_MAX, "f%d.txt", i);
             if(os_delete(filename)==1){
-                printf("DELETE %s di %s OK\n", filename, name);
+                printf("DELETE %s di %s OK\n", filename, argv[1]);
                 num_ok_op++;
             }
             else{
-                printf("DELETE %s di %s FAIL\n", filename, name);
+                printf("DELETE %s di %s FAIL\n", filename, argv[1]);
                 num_fail_op++;
             }
         }
@@ -152,11 +154,11 @@ int main(int argc, char* argv[]){
     
     /*disconnessione*/
     if(os_disconnect()==1){
-        printf("DISCONNECT %s OK\n", name);
+        printf("DISCONNECT %s OK\n", argv[1]);
         num_ok_op++;
     }
     else{
-        printf("DISCONNECT %s FAIL\n", name);
+        printf("DISCONNECT %s FAIL\n", argv[1]);
         num_fail_op++;
     }
     if((getrusage(RUSAGE_SELF,&clientusage))==-1){
@@ -169,6 +171,5 @@ int main(int argc, char* argv[]){
     printf("Numero operazioni failed: %d\n", num_fail_op);
     printf("Tempo in UserMode: %ld.%lds\n", clientusage.ru_utime.tv_sec, clientusage.ru_utime.tv_usec);
     printf("Tempo in KernelMode: %ld.%lds\n", clientusage.ru_stime.tv_sec, clientusage.ru_stime.tv_usec);
-    free(name);
     exit(EXIT_SUCCESS); 
 }

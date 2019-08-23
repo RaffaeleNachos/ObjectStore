@@ -47,7 +47,11 @@ int os_connect(char* name){
     }
     dprintf(fd_skt, "REGISTER %s \n", name);
     response = malloc(MAXMSG*sizeof(char));
-    read(fd_skt,response,sizeof(response));
+    if(read(fd_skt,response,sizeof(response))<0){
+        free(response);
+        response=NULL;
+        return 0;
+    }
     if (strcmp(response, "KO")==0){
         free(response);
         response=NULL;
@@ -64,11 +68,14 @@ int os_store(char* name, void* block, size_t len){
     }
     char* data = malloc(len*sizeof(char)+1);
     memset(data, 0, len*sizeof(char)+1);
-    int btoread=len; /*byte che devo leggere*/
-    readn((int)block,data,btoread);
+    readn((long)block,data,len);
     dprintf(fd_skt, "STORE %s %zu \n %s", name, len, data);
     response = malloc(MAXMSG*sizeof(char));
-    read(fd_skt,response,sizeof(response));
+    if(read(fd_skt,response,sizeof(response))<0){
+        free(response);
+        response=NULL;
+        return 0;
+    }
     if (strcmp(response, "KO")==0){
         free(response);
         free(data);
@@ -92,7 +99,11 @@ void *os_retrieve(char* name){
     char* buffer = NULL;
     char* last = NULL;
     char* token = NULL;
-    read(fd_skt,response,MAXMSG);
+    if(read(fd_skt,response,MAXMSG)<0){
+        free(response);
+        response=NULL;
+        return (void*)NULL;
+    }
     token=strtok_r(response, " ", &last);
     if (strcmp(token,"DATA")==0){
         token=strtok_r(NULL, " ", &last);
@@ -130,7 +141,11 @@ int os_delete(char* name){
     }
     dprintf(fd_skt, "DELETE %s \n", name);
     response = malloc(MAXMSG*sizeof(char));
-    read(fd_skt,response,sizeof(response));
+    if(read(fd_skt,response,sizeof(response))<0){
+        free(response);
+        response=NULL;
+        return 0;
+    }
     if (strcmp(response, "KO")==0){
         free(response);
         response=NULL;
@@ -147,7 +162,11 @@ int os_disconnect(){
     }
     writen(fd_skt, "LEAVE", 6);
     response = malloc(MAXMSG*sizeof(char));
-    read(fd_skt,response,sizeof(response));
+    if(read(fd_skt,response,sizeof(response))<0){
+        free(response);
+        response=NULL;
+        return 0;
+    }
     if (strcmp(response, "OK")==0){
         if(close(fd_skt)!=0){
             perror("Errore durante la disconnessione");

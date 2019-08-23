@@ -65,7 +65,9 @@ static void* checksignals(void *arg) {
 	    case SIGINT: //pulizia e chiusura
 	    case SIGTERM: //pulizia
 	    case SIGQUIT:
-        case SIGUSR1: printf("ricevuto segnale SIGUSR1\n");
+        case SIGUSR1:   printf("numero client connessi %d\n", numclientconn);
+                        printf("numero file totali %d\n", numtotfile);
+                        printf("size totoale %d\n", totsize);
 	    default:  ; 
 	    }
     }
@@ -83,10 +85,13 @@ unsigned long hash(char *str){ /*funzione hash basata su stringhe*/
 static void* myworker (void* arg){ /*thread detached worker che gestisce un singolo client*/
     long fd = (long)arg;
     int index = -1;
-    char* strreceived = malloc(MAXMSG*sizeof(char)+1);
-    char* crequest = malloc(MAXMSG*sizeof(char));
-    char* last;
-    read(fd,strreceived,MAXMSG);
+    char* strreceived = malloc(MAXMSG*sizeof(char));
+    char* crequest = NULL;
+    char* last = NULL;
+    if(read(fd,strreceived,MAXMSG)<0){
+        perror("impossibile leggere richiesta");
+        writen(fd, "KO", 3);
+    }
     crequest=strtok_r(strreceived, " ", &last);
     while(strcmp(crequest,"LEAVE")!=0){
         if (strcmp(crequest,"REGISTER")==0){
@@ -128,9 +133,11 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             }
         }
         else if (strcmp(crequest,"STORE")==0){
-            int tmpfiledesc;
-            crequest=strtok_r(NULL, " ", &last);
-            char* pathtofile = malloc(UNIX_PATH_MAX*sizeof(char)+1);
+            int nread = 6; //byte STORE + spazio
+            long tmpfiledesc;
+            crequest=strtok_r(NULL, " ", &last); //nome del file
+            nread=nread+strlen(crequest)+1; //byte name + spazio
+            char* pathtofile = malloc(UNIX_PATH_MAX*sizeof(char));
 			memset(pathtofile, 0, UNIX_PATH_MAX);
             strcpy(pathtofile, client_arr[index]->clientdir);
             strcat(pathtofile, "/");
@@ -140,19 +147,19 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
                 perror("errore creazione e scrittura file store");
                 writen(fd,"KO", 3);
             }
-            crequest=strtok_r(NULL, " ", &last);
+            crequest=strtok_r(NULL, " ", &last); //len
+            nread=nread+strlen(crequest)+1; //byte len + spazio
             int dimbyte = strtol(crequest, NULL, 10);
-            //printf("%d\n", dimbyte);
-            crequest=strtok_r(NULL, " ", &last);
-            int nread = strlen(last)*sizeof(char);
-            //printf("nread da last: %d\n", nread);
-            //sono triste
-            //printf("byte da leggere %d\n", dimbyte-nread);
+            crequest=strtok_r(NULL, " ", &last); //"\n"
+            nread=nread+strlen(crequest)+1; //byte \n + spazio
+            printf("n byte letti dall'header: %d\n", nread);
+            nread=MAXMSG-nread;
             writen(tmpfiledesc, last, nread);
-            int btoread=dimbyte-nread;
+            //fino a qui ho letto parte dei dati e ho scritto quella parte sul file.
+            int btoread=dimbyte-nread; //sono i byte che devo ancora leggere, cioè len-byte letti dall'header
             char* data = malloc(btoread*sizeof(char));
 			memset(data, 0, btoread);
-            lseek(fd,0,SEEK_SET);
+            //lseek(fd,0,SEEK_SET);
             readn(fd,data,btoread);
             writen(tmpfiledesc,data,btoread);
             close(tmpfiledesc);
@@ -224,7 +231,12 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
         }
         printf("Terminato, attendo prossima op.\n");
         memset(strreceived, 0, MAXMSG);
-        read(fd,strreceived,MAXMSG);
+        crequest=NULL;
+        last=NULL;
+        if(read(fd,strreceived,MAXMSG)<0){
+            perror("impossibile leggere richiesta");
+            writen(fd, "KO", 3);
+        }
         crequest=strtok_r(strreceived, " ", &last);
     }
     printf("Disconnetto client\n");
@@ -236,9 +248,6 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
     close(fd);
     free(strreceived);
     strreceived=NULL;
-    printf("numero client connessi %d\n", numclientconn);
-    printf("numero file totali %d\n", numtotfile);
-    printf("size totoale %d\n", totsize);
     return (void*)0;
 }
 

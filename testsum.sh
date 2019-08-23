@@ -68,4 +68,4 @@ printf "%s\n" "${stuniq[@]}"
 echo "Tempo totale dei client in UserMode: $usertime"
 echo "Tempo totale dei client in KernelMode: $kerneltime"
 echo "mando segnale SIGUSR1 al server"
-#killall -s USR1 objectstoreserver.out
+killall -s USR1 objectstoreserver.out
