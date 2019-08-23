@@ -3,7 +3,7 @@
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
  * @brief
  * client interattivo
- * @version 1.0
+ * @version 4.0
  * 
  * @copyright Copyright (c) 2019
  * 
@@ -11,28 +11,30 @@
 
 #include <sys/types.h> 
 #include <sys/socket.h> 
-#include <sys/un.h> /* necessario per ind su macchina locale AF_UNIX */
+#include <sys/un.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
-#include "./objectstorelib.h"
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include "./objectstorelib.h"
+#include "rwn.h"
 
 #define MAXMSG 128
+#define NAME_MAX 255
 
 int main(){
     char* name = malloc(MAXMSG*sizeof(char)); 
     char* command = malloc(MAXMSG*sizeof(char));
-    int result;
     scanf("%s", command);
     while((strcmp(command,"LEAVE"))!=0){
         if (strcmp(command, "REGISTER")==0){
             scanf("%s", name);
-            result=os_connect(name);
-            if(result==1){
+            if(os_connect(name)==1){
                 printf("REGISTER andata a buon fine\n");
             }
             else{
@@ -41,16 +43,14 @@ int main(){
         }
         if (strcmp(command, "STORE")==0){
             scanf("%s", name);
-            FILE* inputfile;
-            if ((inputfile = fopen(name, "rb")) == NULL){
+            long inputfile;
+            if ((inputfile = open(name, O_RDONLY)) == -1){
                 perror("Immettere nome file esistente");
                 continue;
             }
-            int inputfd = fileno(inputfile);
             struct stat fst;
-            fstat(inputfd, &fst);
-            result=os_store(name, (void*) inputfile, fst.st_size);
-            if(result==1){
+            fstat(inputfile, &fst);
+            if(os_store(name, (void*)inputfile, fst.st_size)==1){
                 printf("STORE andata a buon fine\n");
             }
             else{
@@ -59,37 +59,46 @@ int main(){
         }
         if (strcmp(command, "RETRIEVE")==0){
             scanf("%s", name);
-            FILE* newfiledesc;
-            if ((newfiledesc=fopen(name, "wb")) == NULL){
-                perror("errore creazione e scrittura retrieve client");
-                continue;
+            int checkfile;
+            if ((checkfile=open(name, O_RDONLY)) == -1){
+                perror("errore apertura file retrieve client");
             }
+            struct stat fst;
+            fstat(checkfile, &fst);
+            int dimbyte = fst.st_size;
+            char* buffer = malloc(dimbyte*sizeof(char)+1);
+            memset(buffer, 0, dimbyte+1);
+            readn(checkfile,buffer,dimbyte);
             char* received = NULL;
             if((received=(char*)os_retrieve(name))!=NULL){
-                fwrite(received,strlen(received)*sizeof(char),1,newfiledesc); //qui la dimensione va cambiata non è MAXMSG
-                printf("RETRIEVE andata a buon fine\n");
+                if(strcmp(received,buffer)==0){
+                    printf("RETRIEVE andata a buon fine\n");
+                }
+                else {
+                    printf("RETRIEVE fallita\n");
+                }
             }
             else{
                 printf("RETRIEVE fallita\n");
             }
+            free(buffer);
+            buffer=NULL;
+            free(received);
             received=NULL;
-            fclose(newfiledesc);
+            close(checkfile);
         }
         if (strcmp(command, "DELETE")==0){
             scanf("%s", name);
-            result=os_delete(name);
-            if(result==1){
+            if(os_delete(name)==1){
                 printf("DELETE andata a buon fine\n");
             }
             else{
                 printf("DELETE fallita\n");
             }
         }
-        result=0;
         scanf("%s", command);
     }
-    result=os_disconnect();
-    if(result==1){
+    if(os_disconnect()==1){
         printf("DISCONNECT andata a buon fine\n");
     }
     else{

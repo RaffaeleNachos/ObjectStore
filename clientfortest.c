@@ -56,9 +56,9 @@ int main(int argc, char* argv[]){
             snprintf(filename, NAME_MAX, "f%d.txt", i);
             
             /*creazione dei file*/
-            char* datablock = malloc(strlen(STR)*i*50*sizeof(char)+1); //+1 per strcat che aggiunge '\0' alla fine
-            memset(datablock, 0, strlen(STR)*i*50*sizeof(char)+1);
-            for(int j = 1; j<=(i*50); j++){
+            char* datablock = malloc(strlen(STR)*i*sizeof(char)+1); //+1 per strcat che aggiunge '\0' alla fine
+            memset(datablock, 0, strlen(STR)*i*sizeof(char)+1);
+            for(int j = 1; j<=(i); j++){
                 strncat(datablock,STR,sizeof(STR));
             }
             long newfile;
@@ -66,7 +66,7 @@ int main(int argc, char* argv[]){
                 perror("errore creazione e scrittura file client");
                 continue;
             }
-            writen(newfile, datablock, strlen(STR)*i*50*sizeof(char));
+            writen(newfile, datablock, strlen(STR)*i*sizeof(char));
             close(newfile);
             
             /*esecuzione store*/
@@ -85,6 +85,7 @@ int main(int argc, char* argv[]){
                 printf("STORE %s di %s FAIL\n", filename, argv[1]);
                 num_fail_op++;
             }
+            close(inputfile);
             free(datablock);
             datablock=NULL;
         }

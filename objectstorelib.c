@@ -106,24 +106,31 @@ void *os_retrieve(char* name){
     }
     token=strtok_r(response, " ", &last);
     if (strcmp(token,"DATA")==0){
-        token=strtok_r(NULL, " ", &last);
+        int nread = 5; //byte DATA + spazio
+        token=strtok_r(NULL, " ", &last); //leggo len
+        nread=nread+strlen(token)+1;
         int dimbyte = strtol(token, NULL, 10);
-        //printf("dimbyte ricevuta %d\n", dimbyte);
+        token=strtok_r(NULL, " ", &last); //leggo "\n"
+        nread=nread+strlen(token)+1; //byte \n + spazio
+        printf("byte letti dall'header: %d\n", nread);
+        nread=MAXMSG-nread; //nread diventa il resto della str
         buffer = malloc((dimbyte)*sizeof(char)+1);
         memset(buffer, 0, dimbyte+1);
-        token=strtok_r(NULL, " ", &last); /*qui leggo \n*/
-        int nread = strlen(last)*sizeof(char);
-        //printf("nread da last: %d\n", nread);
-        //printf("byte da leggere %d\n", dimbyte-nread);
-        strcpy(buffer,last); /*copio la prima parte*/
+        if(dimbyte<=nread){
+            strncpy(buffer,last,dimbyte);
+        }
+        else{
+            strncpy(buffer,last,nread); /*copio la prima parte*/
+        }
         int btoread=dimbyte-nread; /*i byte da leggere sono i byte totale - i byte letti dal messaggio*/
-        char* data = malloc(btoread*sizeof(char)); /*dove vado a copiare temporaneamente*/
-        memset(data, 0, btoread);
-        lseek(fd_skt,0,SEEK_SET); /*mi sposto all'inizio del file*/
-        readn(fd_skt,data,btoread);
-        strncat(buffer,data,btoread);
-        free(data);
-        data=NULL;
+        if(btoread>0){
+            char* data = malloc(btoread*sizeof(char)); /*dove vado a copiare temporaneamente*/
+            memset(data, 0, btoread);
+            readn(fd_skt,data,btoread);
+            strncat(buffer,data,btoread);
+            free(data);
+            data=NULL;
+        }
         free(response);
         response=NULL;
     }

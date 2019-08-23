@@ -154,19 +154,26 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             nread=nread+strlen(crequest)+1; //byte \n + spazio
             printf("n byte letti dall'header: %d\n", nread);
             nread=MAXMSG-nread;
-            writen(tmpfiledesc, last, nread);
+            if(dimbyte<=nread){
+                writen(tmpfiledesc, last, dimbyte);
+            }
+            else {
+                writen(tmpfiledesc, last, nread);
+            }
             //fino a qui ho letto parte dei dati e ho scritto quella parte sul file.
             int btoread=dimbyte-nread; //sono i byte che devo ancora leggere, cioè len-byte letti dall'header
-            char* data = malloc(btoread*sizeof(char));
-			memset(data, 0, btoread);
-            //lseek(fd,0,SEEK_SET);
-            readn(fd,data,btoread);
-            writen(tmpfiledesc,data,btoread);
+            if (btoread>0){
+                char* data = malloc(btoread*sizeof(char));
+			    memset(data, 0, btoread);
+                readn(fd,data,btoread);
+                writen(tmpfiledesc,data,btoread);
+                close(tmpfiledesc);
+                free(data);
+                data=NULL;
+            }
             close(tmpfiledesc);
-            free(data);
             free(pathtofile);
             pathtofile=NULL;
-            data=NULL;
             pthread_mutex_lock(&fmtx);
             numtotfile++;
             pthread_mutex_unlock(&fmtx);
