@@ -31,8 +31,6 @@ clientfortest.out: clientfortest.c
 
 test:
 	@echo "eseguo"
-	@gnome-terminal ./objectstoreserver.out
-	@sleep 1
 	declare -a pids && \
 	i=1; while [ "$$i" -le 50 ]; do \
 	echo "Lancio client$$i TEST 1" >>"testout.log"; \
@@ -57,6 +55,7 @@ test:
 	i=$$((i + 1)); \
 	done)
 	@echo "TEST 2 e 3 TERMINATI"
+	@echo "Mando in esecuzione lo script"
 	bash ./testsum.sh
 
 clean:

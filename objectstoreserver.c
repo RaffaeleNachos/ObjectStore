@@ -3,7 +3,9 @@
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
  * @brief 
  * server object store
- * @version 3.0 not final
+ * @version 4.0 final? I hope so...
+ * it wasn't..
+ * @version 5.0 final
  * 
  * @copyright Copyright (c) 2019
  * 
@@ -62,17 +64,6 @@ static void* checksignals(void *arg) {
     memset(&s, 0, sizeof(s));
     s.sa_handler=SIG_IGN; /*ignore SIGPIPE*/
     sigaction(SIGPIPE,&s,NULL);
-    
-    struct sigaction sother; /*struct per gestione degli altri segnali*/
-    memset(&sother, 0, sizeof(sother));
-    s.sa_handler=SIG_DFL; /*gestione di default*/
-    s.sa_flags = 0; /*per non far ripartire la sistem call setto a zero, in più meccanismo non blocking*/
-    /*assegno il loro nuovo comportamento*/
-    sigaction(SIGINT,&sother,NULL);
-    sigaction(SIGQUIT,&sother,NULL);
-    sigaction(SIGSEGV,&sother,NULL);
-    sigaction(SIGUSR1,&sother,NULL);
-    sigaction(SIGTERM,&sother,NULL);
 
     while(1) {
 	    int sig;
@@ -84,21 +75,26 @@ static void* checksignals(void *arg) {
 	    }
 	    switch(sig) {
 	    case SIGINT:
+			//printf("ricevuto segnale sigint\n");
             fire_alarm=1;
             return NULL;
-	    case SIGQUIT: 
+	    case SIGQUIT:
+			//printf("ricevuto segnale sigquit\n");
             fire_alarm=1;
-            break;
-        case SIGTERM: 
+            return NULL;
+        case SIGTERM:
+			//printf("ricevuto segnale sigterm\n");
             fire_alarm=1;
-            break;
-	    case SIGSEGV: 
+            return NULL;
+	    case SIGSEGV:
+            //printf("ricevuto segnale sigsegv\n");
             writen(1, "Errore grave!, memoria non consistente!", 40);
             fire_alarm=1;
-            break;
-        case SIGUSR1:   
+            return NULL;
+        case SIGUSR1:
+			//printf("ricevuto segnale sigusr1\n"); 
             fire_alarm=2;
-            break;
+            return NULL;
 	    default:    ; 
 	    }
     }
@@ -127,7 +123,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
     while(strcmp(crequest,"LEAVE")!=0){
         if (strcmp(crequest,"REGISTER")==0){
             crequest=strtok_r(NULL, " ", &last); //leggo name
-            printf("registro client %s\n", crequest);
+            printf("Registro %s\n", crequest);
             index = hash(crequest); /*calcolo indice nella tabella hash*/
             if((client_arr[index]!=NULL)){ /* se è già registrato vuol dire che c'è una entry nella tabella*/
                 if(client_arr[index]->isonline==1){
@@ -144,7 +140,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
                 }
             }
             else{ /* se non è registrato */
-                printf("ricevuto utente non registrato\n");
+                //printf("ricevuto utente non registrato\n");
                 client_arr[index] = malloc(sizeof(clientinfo));
                 client_arr[index]->isonline=1;
                 client_arr[index]->name = malloc(MAXMSG*sizeof(char));
@@ -248,7 +244,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             strcpy(pathtofile, client_arr[index]->clientdir);
             strcat(pathtofile, "/");
             strcat(pathtofile, crequest);
-            printf("%s\n", pathtofile);
+            //printf("%s\n", pathtofile);
             struct stat st;
             stat(pathtofile, &st);
             if(remove(pathtofile)!=0){
@@ -268,7 +264,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             }
             pathtofile=NULL;
         }
-        printf("Terminato, attendo prossima op.\n");
+        //printf("Terminato, attendo prossima op.\n");
         memset(strreceived, 0, MAXMSG);
         crequest=NULL;
         last=NULL;
@@ -278,7 +274,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
         }
         crequest=strtok_r(strreceived, " ", &last);
     }
-    printf("Disconnetto client\n");
+    printf("Disconnetto %s\n", client_arr[index]->name);
     client_arr[index]->isonline=0;
     pthread_mutex_lock(&cmtx);
     numclientconn--;
@@ -338,7 +334,9 @@ static void run_server(struct sockaddr_un * psa){
     while(fire_alarm==0){
         errno=0;
         if ((fd_c = accept(fd_skt, NULL, 0)) == -1){ /*da qui uso fd_c del client accettato */
-            if(errno==EAGAIN){ /*essendo non blocking se la socket ha terminato ti dice che non ha più nulla da fare*/
+			/*socket server non blocking
+			socket:"MI HAI DETTO DI NON ASPETTARE! ti mando EAGAIN come segnale." */
+            if(errno==EAGAIN){ /*essendo la socket del server non blocking ti avvisa che le hai detto di non aspettare ma non ha più nulla da fare*/
                 continue;
             }
             perror("Non è stato possibile creare un nuovo socket per la comunicazione");
@@ -384,7 +382,7 @@ int main (void) {
     }
     run_server(&sa);
     pthread_join(checksignals_th, NULL);
-    if(fire_alarm>=1){
+    if(fire_alarm!=0){
         if(fire_alarm==2){
             printf("numero client connessi %d\n", numclientconn);
             printf("numero file totali %d\n", numtotfile);
