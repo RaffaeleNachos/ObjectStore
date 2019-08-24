@@ -4,7 +4,7 @@
  * @brief 
  * libreria utilizzata dal client
  * maggiori informazioni contenute nel file objectstorelib.h
- * @version 2.0
+ * @version 3.0 final
  * 
  * @copyright Copyright (c) 2019
  * 
@@ -14,14 +14,14 @@
 #include "rwn.h"
 #include <sys/types.h> 
 #include <sys/socket.h> 
-#include <sys/un.h> /* necessario per ind su macchina locale AF_UNIX */
+#include <sys/un.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 
-#define UNIX_PATH_MAX 108 /* lunghezza massima consentita per il path */
+#define UNIX_PATH_MAX 108
 #define SOCKNAME "./objstore.sock"
 #define MAXMSG 128
 
@@ -29,7 +29,7 @@ int fd_skt = -1;
 char* response; //buffer dove vado a salvare le risposte del server con la read
 
 int os_connect(char* name){
-    if(fd_skt!=-1){ //se ho già eseguito la register parte client
+    if(fd_skt!=-1){ //se ho già eseguito la register lato client (necessario per il client interattivo)
         return 0;
     }
     struct sockaddr_un sa;
@@ -69,7 +69,7 @@ int os_store(char* name, void* block, size_t len){
     char* data = malloc(len*sizeof(char)+1);
     memset(data, 0, len*sizeof(char)+1);
     readn((long)block,data,len);
-    dprintf(fd_skt, "STORE %s %zu \n %s", name, len, data);
+    dprintf(fd_skt, "STORE %s %zu \n %s", name, len, data); //invio come da protocollo
     response = malloc(MAXMSG*sizeof(char));
     if(read(fd_skt,response,sizeof(response))<0){
         free(response);
@@ -108,11 +108,11 @@ void *os_retrieve(char* name){
     if (strcmp(token,"DATA")==0){
         int nread = 5; //byte DATA + spazio
         token=strtok_r(NULL, " ", &last); //leggo len
-        nread=nread+strlen(token)+1;
+        nread=nread+strlen(token)+1; //byte len + spazio
         int dimbyte = strtol(token, NULL, 10);
         token=strtok_r(NULL, " ", &last); //leggo "\n"
         nread=nread+strlen(token)+1; //byte \n + spazio
-        printf("byte letti dall'header: %d\n", nread);
+        //printf("byte letti dall'header: %d\n", nread);
         nread=MAXMSG-nread; //nread diventa il resto della str
         buffer = malloc((dimbyte)*sizeof(char)+1);
         memset(buffer, 0, dimbyte+1);

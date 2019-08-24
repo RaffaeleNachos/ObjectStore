@@ -1,3 +1,6 @@
+# Makefile
+# Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
+
 SHELL := /bin/bash
 CC = gcc
 CFLAGS = -g -pedantic -Wall -O3
@@ -28,7 +31,7 @@ clientfortest.out: clientfortest.c
 
 test:
 	@echo "eseguo"
-	@gnome-terminal -- ./objectstoreserver.out
+	@gnome-terminal ./objectstoreserver.out
 	@sleep 1
 	declare -a pids && \
 	i=1; while [ "$$i" -le 50 ]; do \

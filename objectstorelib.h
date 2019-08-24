@@ -3,7 +3,7 @@
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
  * @brief 
  * libreria per client che implementa la REGISTER, STORE, RETRIEVE e DELETE con l'object store
- * @version 0.1
+ * @version 0.1 final
  * 
  * @copyright Copyright (c) 2019
  * 

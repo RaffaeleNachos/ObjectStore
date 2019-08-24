@@ -3,7 +3,7 @@
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
  * @brief
  * client interattivo
- * @version 4.0
+ * @version 4.0 final
  * 
  * @copyright Copyright (c) 2019
  * 

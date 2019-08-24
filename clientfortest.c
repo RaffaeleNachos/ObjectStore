@@ -2,8 +2,8 @@
  * @file clientfortest.c
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
  * @brief 
- * client per test
- * @version 2.0
+ * client per test richiesti
+ * @version 3.0 final
  * 
  * @copyright Copyright (c) 2019
  * 
@@ -37,7 +37,8 @@ int main(int argc, char* argv[]){
         exit(EXIT_FAILURE);
     }
     int test = strtol(argv[2],NULL,10);
-    struct rusage clientusage;
+    struct rusage clientusage; //struct per temi in usermode e kernelmode
+    
     /*register*/
     if(os_connect(argv[1])==1){
         printf("REGISTER %s OK\n", argv[1]);
@@ -53,12 +54,12 @@ int main(int argc, char* argv[]){
         char* filename = malloc(NAME_MAX*sizeof(char));
         for(int i = 1; i<=20; i++){
             memset(filename, 0, NAME_MAX);
-            snprintf(filename, NAME_MAX, "f%d.txt", i);
+            snprintf(filename, NAME_MAX, "f%d.txt", i); //creo nome del file f1.txt ... f20.txt
             
             /*creazione dei file*/
-            char* datablock = malloc(strlen(STR)*i*sizeof(char)+1); //+1 per strcat che aggiunge '\0' alla fine
-            memset(datablock, 0, strlen(STR)*i*sizeof(char)+1);
-            for(int j = 1; j<=(i); j++){
+            char* datablock = malloc(strlen(STR)*i*sizeof(char)+((i-1)*52*strlen(STR)*sizeof(char))+1); //+1 per strcat che aggiunge '\0' alla fine
+            memset(datablock, 0, strlen(STR)*i*sizeof(char)+((i-1)*52*strlen(STR)*sizeof(char))+1); //con i=1 abbiamo (100*i)+(0*52*100) quindi file da 100byte
+            for(int j = 1; j<=(i+(i-1)*52); j++){
                 strncat(datablock,STR,sizeof(STR));
             }
             long newfile;
@@ -66,7 +67,7 @@ int main(int argc, char* argv[]){
                 perror("errore creazione e scrittura file client");
                 continue;
             }
-            writen(newfile, datablock, strlen(STR)*i*sizeof(char));
+            writen(newfile, datablock, strlen(STR)*i*sizeof(char)+((i-1)*52*strlen(STR)*sizeof(char)));
             close(newfile);
             
             /*esecuzione store*/
@@ -98,7 +99,7 @@ int main(int argc, char* argv[]){
             memset(filename, 0, NAME_MAX);
             snprintf(filename, NAME_MAX, "f%d.txt", i);
             int checkfile;
-            if ((checkfile=open(filename, O_RDONLY)) == -1){
+            if ((checkfile=open(filename, O_RDONLY)) == -1){ //apro il file nella directory del client per controllare se quello inviato dal server è corretto
                 perror("errore apertura file retrieve client");
             }
             struct stat fst;
