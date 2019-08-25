@@ -19,8 +19,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/select.h>
-#include <string.h>
 #include <pthread.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -37,7 +35,7 @@ static pthread_mutex_t cmtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t fmtx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t dmtx = PTHREAD_MUTEX_INITIALIZER;
 
-static volatile sig_atomic_t fire_alarm = 0;
+static volatile sig_atomic_t fire_alarm = 0; /*variabile che avvisa il server nel caso in cui sia arrivato un segnale*/
 static volatile sig_atomic_t numclientconn = 0;
 static volatile sig_atomic_t numtotfile = 0;
 static volatile sig_atomic_t totsize = 0;
@@ -45,29 +43,30 @@ static volatile sig_atomic_t totsize = 0;
 per garantire la comunicazione con il signal handler, i dati devono essere consistenti.
 la caratteristica di sig_atomic_t è il fatto che esso è garantito essere letto e scritto in una sola operazione*/
 
-typedef struct _client { //per vedere se il cliente è già registrato basta controllare tramite hashing
+typedef struct _client { /*per vedere se il cliente è già registrato basta controllare tramite hashing*/
     char* name;
-    int isonline; //per controllare che non sia già online
+    int isonline; /*per controllare che non sia già online*/
     char* clientdir;
 } clientinfo;
 
-clientinfo *client_arr[MAXREGUSR]; //la mia tabella hash ad indirizzamento diretto
+clientinfo *client_arr[MAXREGUSR]; /*la mia tabella hash ad indirizzamento diretto*/
 
 void cleanup(){
     unlink(SOCKNAME);
 }
 
+/*thread gestore dei segnali*/
 static void* checksignals(void *arg) {
     sigset_t *set = (sigset_t*)arg;
     
     struct sigaction s; /*struct per ignorare SIGPIPE*/
     memset(&s, 0, sizeof(s));
     s.sa_handler=SIG_IGN; /*ignore SIGPIPE*/
-    sigaction(SIGPIPE,&s,NULL);
+    sigaction(SIGPIPE,&s,NULL); /*assegno comportamento*/
 
     while(1) {
 	    int sig;
-	    int rterrn = sigwait(set, &sig);
+	    int rterrn = sigwait(set, &sig); /*aspetto segnale*/
 	    if (rterrn != 0) {
 	        errno = rterrn;
 	        perror("errore sigwait");
@@ -112,7 +111,7 @@ unsigned long hash(char *str){ /*funzione hash basata su stringhe*/
 static void* myworker (void* arg){ /*thread detached worker che gestisce un singolo client*/
     long fd = (long)arg;
     int index = -1;
-    char* strreceived = malloc(MAXMSG*sizeof(char));
+    char* strreceived = malloc(MAXMSG*sizeof(char)); /*stringa ricevuta dal client*/
     char* crequest = NULL;
     char* last = NULL;
     if(read(fd,strreceived,MAXMSG)<0){
@@ -141,7 +140,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             }
             else{ /* se non è registrato */
                 //printf("ricevuto utente non registrato\n");
-                client_arr[index] = malloc(sizeof(clientinfo));
+                client_arr[index] = malloc(sizeof(clientinfo)); /*alloco struct info client*/
                 client_arr[index]->isonline=1;
                 client_arr[index]->name = malloc(MAXMSG*sizeof(char));
                 client_arr[index]->clientdir = malloc(UNIX_PATH_MAX*sizeof(char));
@@ -217,7 +216,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             memset(pathtofile, 0, UNIX_PATH_MAX);
             strcpy(pathtofile, client_arr[index]->clientdir);
             strcat(pathtofile, "/");
-            strcat(pathtofile, crequest);
+            strcat(pathtofile, crequest); /*ottengo così il path del file da cui leggere e poi inviare*/
             //printf("nome del file %s\n", crequest);
             //printf("path %s\n", pathtofile);
             if ((readfiledesc=open(pathtofile, O_RDONLY)) == -1){
@@ -227,7 +226,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             }
             struct stat fst;
             fstat(readfiledesc, &fst);
-            int dimbyte = fst.st_size;
+            int dimbyte = fst.st_size; /*dimensione del file*/
             char* buffer = malloc(dimbyte*sizeof(char)+1);
             memset(buffer, 0, dimbyte+1);
             readn(readfiledesc,buffer,dimbyte);
@@ -295,7 +294,7 @@ void spawnmythread (long arg){
 	    close(arg);
 	    return;
     }
-    /*creazione thread in modalità detached così da non dover fare la th_wait */
+    /*creazione thread in modalità detached così da non dover fare la th_wait o tenere un array di fd*/
     errno=0;
     if (pthread_attr_setdetachstate(&t_attr,PTHREAD_CREATE_DETACHED) != 0) {
 	    perror("set in modalità detached fallita");
@@ -316,26 +315,22 @@ void spawnmythread (long arg){
 static void run_server(struct sockaddr_un * psa){
     long fd_skt = -1;
     long fd_c = -1; /*file descriptor socket e client*/ 
-    errno = 0;
     if ((fd_skt = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0)) == -1) {
         perror("Non è stato possibile creare socket");
         exit(EXIT_FAILURE);
-    } 
-    errno = 0;
+    }
     if (bind(fd_skt, (struct sockaddr *)psa, sizeof(*psa)) == -1) { /*associa un indirizzo a socket*/
         perror("Non è stato possibile eseguire il bind");
         exit(EXIT_FAILURE);
     }
-    errno = 0;
     if (listen(fd_skt, SOMAXCONN) == -1) { /*il socket accetta connessioni*/
         perror("Non è stato possibile accettare la connessione");
         exit(EXIT_FAILURE);
     }
     while(fire_alarm==0){
-        errno=0;
         if ((fd_c = accept(fd_skt, NULL, 0)) == -1){ /*da qui uso fd_c del client accettato */
 			/*socket server non blocking
-			socket:"MI HAI DETTO DI NON ASPETTARE! ti mando EAGAIN come segnale." */
+			socket:"mi hai detto di non aspettare ma sono qui senza lavoro da eseguire, ti mando EAGAIN come segnale." */
             if(errno==EAGAIN){ /*essendo la socket del server non blocking ti avvisa che le hai detto di non aspettare ma non ha più nulla da fare*/
                 continue;
             }
@@ -370,7 +365,7 @@ int main (void) {
     sigaddset(&mask, SIGSEGV);
 
     /*necessito di modificare la signal mask dei thread che invocherò così da non far terminare i thread se ricevo i segnali con bit a 1*/
-    if (pthread_sigmask(SIG_SETMASK, &mask,NULL) != 0) { /*la maschera dei bit viene ereditata con SIG_BLOCK ottengo un OR della vecchia e nuova maschera*/
+    if (pthread_sigmask(SIG_BLOCK, &mask,NULL) != 0) { /*la maschera dei bit viene ereditata con SIG_BLOCK ottengo un OR della vecchia e nuova maschera*/
 	    perror("errore set mask");
 	    return 0;
     }
@@ -380,8 +375,11 @@ int main (void) {
 	    perror("errore creazione thread segnali");
 	    return 0;
     }
+
     run_server(&sa);
-    pthread_join(checksignals_th, NULL);
+
+    pthread_join(checksignals_th, NULL); /*aspetto la terminazione del thread dei segnali*/
+
     if(fire_alarm!=0){
         if(fire_alarm==2){
             printf("numero client connessi %d\n", numclientconn);
@@ -389,7 +387,7 @@ int main (void) {
             printf("size totale in byte %d\n", totsize);
         }
         for (int i=0; i<MAXREGUSR; i++) {
-            if(client_arr[i]!=NULL){
+            if(client_arr[i]!=NULL){ //pulisco la tabella hash
                 free(client_arr[i]->clientdir);
                 free(client_arr[i]->name);
                 free(client_arr[i]);

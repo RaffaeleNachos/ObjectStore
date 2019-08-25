@@ -4,7 +4,7 @@
  * @brief 
  * libreria utilizzata dal client
  * maggiori informazioni contenute nel file objectstorelib.h
- * @version 3.0 final
+ * @version 4.0 final
  * 
  * @copyright Copyright (c) 2019
  * 
@@ -45,7 +45,7 @@ int os_connect(char* name){
         }
         else return 0; 
     }
-    dprintf(fd_skt, "REGISTER %s \n", name);
+    dprintf(fd_skt, "REGISTER %s \n", name); /*mando al server header*/
     response = malloc(MAXMSG*sizeof(char));
     if(read(fd_skt,response,sizeof(response))<0){
         free(response);
@@ -63,13 +63,13 @@ int os_connect(char* name){
 }
 
 int os_store(char* name, void* block, size_t len){
-    if(fd_skt==-1){ //se nono ho ancora fatto la register
+    if(fd_skt==-1){ //se non ho ancora fatto la register
         return 0;
     }
     char* data = malloc(len*sizeof(char)+1);
     memset(data, 0, len*sizeof(char)+1);
-    readn((long)block,data,len);
-    dprintf(fd_skt, "STORE %s %zu \n %s", name, len, data); //invio come da protocollo
+    readn((long)block,data,len); /*leggo len dall'oggetto puntato da block*/
+    dprintf(fd_skt, "STORE %s %zu \n %s", name, len, data); /*invio come da protocollo*/
     response = malloc(MAXMSG*sizeof(char));
     if(read(fd_skt,response,sizeof(response))<0){
         free(response);

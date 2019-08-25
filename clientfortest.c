@@ -21,6 +21,7 @@
 #include <fcntl.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <signal.h>
 #include "./objectstorelib.h"
 #include "rwn.h"
 
@@ -28,8 +29,8 @@
 #define NAME_MAX 255
 #define STR "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed eget purus a enim pulvinar dictum. STOP"
 
-static int num_ok_op = 0;
-static int num_fail_op = 0;
+static volatile sig_atomic_t num_ok_op = 0; //per resoconto numero operazioni andate a buon fine
+static volatile sig_atomic_t num_fail_op = 0; //numero operazioni fallite
 
 int main(int argc, char* argv[]){
     if(argc!=3){
@@ -37,7 +38,7 @@ int main(int argc, char* argv[]){
         exit(EXIT_FAILURE);
     }
     int test = strtol(argv[2],NULL,10);
-    struct rusage clientusage; //struct per temi in usermode e kernelmode
+    struct rusage clientusage; //struct per tempi in usermode e kernelmode
     
     /*register*/
     if(os_connect(argv[1])==1){

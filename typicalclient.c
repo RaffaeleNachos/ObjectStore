@@ -2,7 +2,7 @@
  * @file typicalclient.c
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
  * @brief
- * client interattivo
+ * client interattivo (non richiesto dal progetto, utilizzato personalmente per debugging approfondito con valgrind)
  * @version 4.0 final
  * 
  * @copyright Copyright (c) 2019

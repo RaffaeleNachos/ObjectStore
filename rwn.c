@@ -4,7 +4,7 @@
  * @brief
  * implementazione delle funzioni readn e writen. 
  * maggiori informazioni contenute nel file rwn.h
- * @version 1.0 final
+ * @version 2.0 final
  * 
  * @copyright Copyright (c) 2019
  * 
