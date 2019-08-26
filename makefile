@@ -3,7 +3,7 @@
 
 SHELL := /bin/bash
 CC = gcc
-CFLAGS = -g -pedantic -Wall -O3
+CFLAGS = -g -pedantic -Wall -O3 -std=c99 -D_POSIX_C_SOURCE=200809L
 OUTFILES = rwn.a objectstoreserver.out objectstorelib.a clientfortest.out
 HEADFILES = objectstorelib.h
 OBJFILES = objectstorelib.o
