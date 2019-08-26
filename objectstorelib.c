@@ -47,7 +47,7 @@ int os_connect(char* name){
     }
     dprintf(fd_skt, "REGISTER %s \n", name); /*mando al server header*/
     response = malloc(MAXMSG*sizeof(char));
-    if(read(fd_skt,response,sizeof(response))<0){
+    if(readcn(fd_skt,response,sizeof(response))<0){
         free(response);
         response=NULL;
         return 0;
@@ -71,7 +71,7 @@ int os_store(char* name, void* block, size_t len){
     readn((long)block,data,len); /*leggo len dall'oggetto puntato da block*/
     dprintf(fd_skt, "STORE %s %zu \n %s", name, len, data); /*invio come da protocollo*/
     response = malloc(MAXMSG*sizeof(char));
-    if(read(fd_skt,response,sizeof(response))<0){
+    if(readcn(fd_skt,response,sizeof(response))<0){
         free(response);
         response=NULL;
         return 0;
@@ -99,7 +99,7 @@ void *os_retrieve(char* name){
     char* buffer = NULL;
     char* last = NULL;
     char* token = NULL;
-    if(read(fd_skt,response,MAXMSG)<0){
+    if(readcn(fd_skt,response,MAXMSG)<0){
         free(response);
         response=NULL;
         return (void*)NULL;
@@ -148,7 +148,7 @@ int os_delete(char* name){
     }
     dprintf(fd_skt, "DELETE %s \n", name);
     response = malloc(MAXMSG*sizeof(char));
-    if(read(fd_skt,response,sizeof(response))<0){
+    if(readcn(fd_skt,response,sizeof(response))<0){
         free(response);
         response=NULL;
         return 0;
@@ -167,9 +167,9 @@ int os_disconnect(){
     if(fd_skt==-1){
         return 1;
     }
-    writen(fd_skt, "LEAVE", 6);
+    writen(fd_skt, "LEAVE \n", 8);
     response = malloc(MAXMSG*sizeof(char));
-    if(read(fd_skt,response,sizeof(response))<0){
+    if(readcn(fd_skt,response,sizeof(response))<0){
         free(response);
         response=NULL;
         return 0;

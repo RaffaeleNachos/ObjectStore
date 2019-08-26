@@ -114,9 +114,9 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
     char* strreceived = malloc(MAXMSG*sizeof(char)); /*stringa ricevuta dal client*/
     char* crequest = NULL;
     char* last = NULL;
-    if(read(fd,strreceived,MAXMSG)<0){
+    if(readcn(fd,strreceived,MAXMSG)<0){
         perror("impossibile leggere richiesta");
-        writen(fd, "KO", 3);
+        writen(fd, "KO \n", 5);
     }
     crequest=strtok_r(strreceived, " ", &last);
     while(strcmp(crequest,"LEAVE")!=0 && fire_alarm==0){
@@ -127,7 +127,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             if((client_arr[index]!=NULL)){ /* se è già registrato vuol dire che c'è una entry nella tabella*/
                 if(client_arr[index]->isonline==1){
                     perror("Ricevuto utente già online");
-                    writen(fd, "KO", 3);
+                    writen(fd, "KO \n", 5);
                     continue;
                 }
                 else {
@@ -135,7 +135,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
                     pthread_mutex_lock(&cmtx);
                     numclientconn++;
                     pthread_mutex_unlock(&cmtx);
-                    writen(fd, "OK", 3);
+                    writen(fd, "OK \n", 5);
                 }
             }
             else{ /* se non è registrato */
@@ -147,7 +147,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
                 strcpy(client_arr[index]->name,crequest);
                 if (getcwd(client_arr[index]->clientdir, UNIX_PATH_MAX) == NULL) { /*mi faccio restituire la current directory per creare la folder all'interno di data*/
                     perror("getcwd() error");
-                    writen(fd, "KO", 3);
+                    writen(fd, "KO \n", 5);
                     continue;
                 }
                 strcat(client_arr[index]->clientdir,"/data/");
@@ -156,7 +156,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
                 pthread_mutex_lock(&cmtx);
                 numclientconn++;
                 pthread_mutex_unlock(&cmtx);
-                writen(fd, "OK", 3);
+                writen(fd, "OK \n", 5);
             }
         }
         else if (strcmp(crequest,"STORE")==0){
@@ -172,7 +172,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             //printf("path %s\n", pathtofile);
             if ((tmpfiledesc=open(pathtofile, O_WRONLY | O_CREAT, 0777)) == -1){
                 perror("errore creazione e scrittura file store");
-                writen(fd,"KO", 3);
+                writen(fd,"KO \n", 5);
             }
             crequest=strtok_r(NULL, " ", &last); //leggo len
             nread=nread+strlen(crequest)+1; //byte len + spazio
@@ -207,7 +207,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             pthread_mutex_lock(&dmtx);
             totsize+=dimbyte;
             pthread_mutex_unlock(&dmtx);
-            writen(fd,"OK",3);
+            writen(fd,"OK \n",5);
         }
         else if (strcmp(crequest,"RETRIEVE")==0){
             int readfiledesc;
@@ -221,7 +221,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             //printf("path %s\n", pathtofile);
             if ((readfiledesc=open(pathtofile, O_RDONLY)) == -1){
                 perror("errore creazione e scrittura file retrieve");
-                writen(fd,"KO", 3);
+                writen(fd,"KO \n", 5);
                 continue;
             }
             struct stat fst;
@@ -249,7 +249,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
             if(remove(pathtofile)!=0){
                 perror("errore delete server");
                 free(pathtofile);
-                writen(fd,"KO", 3);
+                writen(fd,"KO \n", 5);
             }
             else {
                 free(pathtofile);
@@ -259,7 +259,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
                 pthread_mutex_lock(&dmtx);
                 totsize-=st.st_size;
                 pthread_mutex_unlock(&dmtx);
-                writen(fd,"OK",3);
+                writen(fd,"OK \n",5);
             }
             pathtofile=NULL;
         }
@@ -267,9 +267,9 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
         memset(strreceived, 0, MAXMSG);
         crequest=NULL;
         last=NULL;
-        if(read(fd,strreceived,MAXMSG)<0){
+        if(readcn(fd,strreceived,MAXMSG)<0){
             perror("impossibile leggere richiesta");
-            writen(fd, "KO", 3);
+            writen(fd, "KO \n", 5);
         }
         crequest=strtok_r(strreceived, " ", &last);
     }
@@ -278,7 +278,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
     pthread_mutex_lock(&cmtx);
     numclientconn--;
     pthread_mutex_unlock(&cmtx);
-    writen(fd, "OK", 3);
+    writen(fd, "OK \n", 5);
     close(fd);
     free(strreceived);
     strreceived=NULL;

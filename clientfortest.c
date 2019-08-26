@@ -27,7 +27,7 @@
 
 #define MAXMSG 128
 #define NAME_MAX 16
-#define STR "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed eget purus a enim pulvinar dictum. STOP"
+#define STR "Vi veri veniversum vivus vici. Col potere della verità, vivendo, conquistai l’universo. FINE STRINGA"
 
 static volatile sig_atomic_t num_ok_op = 0; //per resoconto numero operazioni andate a buon fine
 static volatile sig_atomic_t num_fail_op = 0; //numero operazioni fallite
@@ -61,7 +61,7 @@ int main(int argc, char* argv[]){
             char* datablock = malloc(strlen(STR)*i*sizeof(char)+((i-1)*52*strlen(STR)*sizeof(char))+1); //+1 per strcat che aggiunge '\0' alla fine
             memset(datablock, 0, strlen(STR)*i*sizeof(char)+((i-1)*52*strlen(STR)*sizeof(char))+1); //con i=1 abbiamo (100*i)+(0*52*100) quindi file da 100byte
             for(int j = 1; j<=(i+(i-1)*52); j++){
-                strcat(datablock,STR);
+                strncat(datablock,STR,sizeof(STR));
             }
             long newfile;
             if ((newfile=open(filename, O_CREAT | O_WRONLY, 0777)) == -1){

@@ -24,3 +24,9 @@ size_t readn(int fd, void *ptr, size_t n);
  * funzione che chiama la sc write assicurandosi di scrivere esattamente n
  */
 size_t writen(int fd, const void *ptr, size_t n);
+
+/**
+ * @brief 
+ * funzione che chiama la sc read assicurandosi di leggere fino a che non trova \n
+ */
+size_t readcn(int fd, void *ptr, size_t n);
