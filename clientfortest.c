@@ -61,7 +61,7 @@ int main(int argc, char* argv[]){
             char* datablock = malloc(strlen(STR)*i*sizeof(char)+((i-1)*52*strlen(STR)*sizeof(char))+1); //+1 per strcat che aggiunge '\0' alla fine
             memset(datablock, 0, strlen(STR)*i*sizeof(char)+((i-1)*52*strlen(STR)*sizeof(char))+1); //con i=1 abbiamo (100*i)+(0*52*100) quindi file da 100byte
             for(int j = 1; j<=(i+(i-1)*52); j++){
-                strncat(datablock,STR,sizeof(STR));
+                strcat(datablock,STR);
             }
             long newfile;
             if ((newfile=open(filename, O_CREAT | O_WRONLY, 0777)) == -1){
