@@ -119,7 +119,7 @@ static void* myworker (void* arg){ /*thread detached worker che gestisce un sing
         writen(fd, "KO", 3);
     }
     crequest=strtok_r(strreceived, " ", &last);
-    while(strcmp(crequest,"LEAVE")!=0){
+    while(strcmp(crequest,"LEAVE")!=0 && fire_alarm==0){
         if (strcmp(crequest,"REGISTER")==0){
             crequest=strtok_r(NULL, " ", &last); //leggo name
             printf("Registro %s\n", crequest);
@@ -379,6 +379,10 @@ int main (void) {
     run_server(&sa);
 
     pthread_join(checksignals_th, NULL); /*aspetto la terminazione del thread dei segnali*/
+    
+    while(numclientconn!=0){
+        /*aspetto che i client terminino l'ultima operazione per lasciare il server in uno stato consistente*/
+    }
 
     if(fire_alarm!=0){
         if(fire_alarm==2){
