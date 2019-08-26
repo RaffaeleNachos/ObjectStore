@@ -26,7 +26,7 @@
 #include "rwn.h"
 
 #define MAXMSG 128
-#define NAME_MAX 255
+#define NAME_MAX 16
 #define STR "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed eget purus a enim pulvinar dictum. STOP"
 
 static volatile sig_atomic_t num_ok_op = 0; //per resoconto numero operazioni andate a buon fine
