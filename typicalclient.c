@@ -3,6 +3,7 @@
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
  * @brief
  * client interattivo (non richiesto dal progetto, utilizzato personalmente per debugging approfondito con valgrind)
+ * POTREBBE CONTENERE BUG
  * @version 4.0 final
  * 
  * @copyright Copyright (c) 2019

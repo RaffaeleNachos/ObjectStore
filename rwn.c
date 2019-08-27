@@ -2,7 +2,7 @@
  * @file rwn.c
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
  * @brief
- * implementazione delle funzioni readn e writen. 
+ * implementazione delle funzioni readn, writen e readcn. 
  * maggiori informazioni contenute nel file rwn.h
  * @version 2.0 final
  * 

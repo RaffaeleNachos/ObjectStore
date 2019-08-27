@@ -27,7 +27,7 @@
 
 #define MAXMSG 128
 #define NAME_MAX 16
-#define STR "Vi veri veniversum vivus vici. Col potere della verità, vivendo, conquistai l’universo. FINE STRINGA"
+#define STR "Vi veri veniversum vivus vici. Col potere della verita, vivendo, conquistai l universo. FINE STRINGA"
 
 static volatile sig_atomic_t num_ok_op = 0; //per resoconto numero operazioni andate a buon fine
 static volatile sig_atomic_t num_fail_op = 0; //numero operazioni fallite

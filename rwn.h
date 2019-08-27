@@ -3,7 +3,7 @@
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
  * @brief
  * segnatura funzioni readn e writen.
- * ATTENZIONE: da utilizzare solamente quando sono certo della dimensione di lettura e scrittura
+ * ATTENZIONE: readn e writen da utilizzare solamente quando sono certo della dimensione di lettura e scrittura
  * (ad esempio nel caso in cui mi viene inviata la dimensione)
  * @version 0.5 final
  * 

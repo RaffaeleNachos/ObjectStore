@@ -3,8 +3,6 @@
  * @author Raffaele Apetino - Matricola 549220 (r.apetino@studenti.unipi.it)
  * @brief 
  * server object store
- * @version 4.0 final? I hope so...
- * it wasn't..
  * @version 5.0 final
  * 
  * @copyright Copyright (c) 2019
@@ -74,24 +72,19 @@ static void* checksignals(void *arg) {
 	    }
 	    switch(sig) {
 	    case SIGINT:
-			//printf("ricevuto segnale sigint\n");
             fire_alarm=1;
             return NULL;
 	    case SIGQUIT:
-			//printf("ricevuto segnale sigquit\n");
             fire_alarm=1;
             return NULL;
         case SIGTERM:
-			//printf("ricevuto segnale sigterm\n");
             fire_alarm=1;
             return NULL;
 	    case SIGSEGV:
-            //printf("ricevuto segnale sigsegv\n");
             writen(1, "Errore grave!, memoria non consistente!", 40);
             fire_alarm=1;
             return NULL;
-        case SIGUSR1:
-			//printf("ricevuto segnale sigusr1\n"); 
+        case SIGUSR1: 
             fire_alarm=2;
             return NULL;
 	    default:    ; 
@@ -108,6 +101,7 @@ unsigned long hash(char *str){ /*funzione hash basata su stringhe*/
     return (hash%MAXREGUSR); /*ritorna valore in modulo per far si che index si trovi all'interno dell'hash*/
 }
 
+/*worker che mi gestisce il singolo client*/
 static void* myworker (void* arg){ /*thread detached worker che gestisce un singolo client*/
     long fd = (long)arg;
     int index = -1;
@@ -294,7 +288,7 @@ void spawnmythread (long arg){
 	    close(arg);
 	    return;
     }
-    /*creazione thread in modalità detached così da non dover fare la th_wait o tenere un array di fd*/
+    /*creazione thread in modalità detached così da non dover fare la th_join o tenere un array di fd*/
     errno=0;
     if (pthread_attr_setdetachstate(&t_attr,PTHREAD_CREATE_DETACHED) != 0) {
 	    perror("set in modalità detached fallita");
